@@ -4,12 +4,12 @@ import {
     Text,
     TouchableOpacity,
     ScrollView,
-    SafeAreaView,
     StyleSheet,
     Dimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const {width} = Dimensions.get('window');
 
@@ -79,90 +79,93 @@ const HomeScreen = ({navigation}) => {
         const todayCompleted = habit.completions?.includes(today) || false;
 
         return (
-            <TouchableOpacity
-                style={styles.habitItem}
-                onPress={() => navigation.navigate('HabitDetail', {habit})}>
-                <View style={styles.habitHeader}>
-                    <View style={styles.habitInfo}>
-                        <View style={[styles.habitIcon, {backgroundColor: habit.color}]}>
-                            <Icon name={habit.icon} size={24} color="#fff" />
-                        </View>
-                        <View style={styles.habitText}>
-                            <Text style={styles.habitName}>{habit.name}</Text>
-                            <Text style={styles.habitDescription}>{habit.description}</Text>
-                        </View>
-                    </View>
-                    <TouchableOpacity
-                        style={[
-                            styles.checkButton,
-                            todayCompleted && styles.checkButtonCompleted,
-                        ]}
-                        onPress={() => toggleHabitCompletion(habit.id, today)}>
-                        <Icon
-                            name={todayCompleted ? 'check' : 'check'}
-                            size={20}
-                            color={todayCompleted ? '#fff' : '#666'}
-                        />
-                    </TouchableOpacity>
-                </View>
+          <TouchableOpacity
+            style={styles.habitItem}
+            onPress={() => navigation.navigate('HabitDetail', {habit})}>
+              <View style={styles.habitHeader}>
+                  <View style={styles.habitInfo}>
+                      <View style={[styles.habitIcon, {backgroundColor: habit.color}]}>
+                          <Icon name={habit.icon} size={24} color="#fff" />
+                      </View>
+                      <View style={styles.habitText}>
+                          <Text style={styles.habitName}>{habit.name}</Text>
+                          <Text style={styles.habitDescription}>{habit.description}</Text>
+                      </View>
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                        styles.checkButton,
+                        todayCompleted && styles.checkButtonCompleted,
+                    ]}
+                    onPress={() => toggleHabitCompletion(habit.id, today)}>
+                      <Icon
+                        name={todayCompleted ? 'check' : 'check'}
+                        size={20}
+                        color={todayCompleted ? '#fff' : '#666'}
+                      />
+                  </TouchableOpacity>
+              </View>
 
-                <View style={styles.calendarGrid}>
-                    {grid.slice(-84).map((day, index) => (
-                        <View
-                            key={index}
-                            style={[
-                                styles.calendarDay,
-                                day.isCompleted && {backgroundColor: habit.color},
-                            ]}
-                        />
-                    ))}
-                </View>
-            </TouchableOpacity>
+              <View style={styles.calendarGrid}>
+                  {grid.slice(-84).map((day, index) => (
+                    <View
+                      key={index}
+                      style={[
+                          styles.calendarDay,
+                          day.isCompleted && {backgroundColor: habit.color},
+                      ]}
+                    />
+                  ))}
+              </View>
+          </TouchableOpacity>
         );
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity
+      <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+              <View style={styles.leftHeader}>
+                  <TouchableOpacity
                     style={styles.settingsButton}
                     onPress={() => navigation.navigate('Settings')}>
-                    <Icon name="cog" size={24} color="#fff" />
-                </TouchableOpacity>
+                      <Icon name="cog" size={24} color="#fff" />
+                  </TouchableOpacity>
+                  <Text style={styles.appTitle}>Habit Tracker</Text>
+              </View>
 
-                <Text style={styles.appTitle}>Habit Tracker</Text>
+              <View style={styles.headerActions}>
+                  <TouchableOpacity style={styles.proButton}>
+                      <Text style={styles.proButtonText}>PRO</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    // style={styles.analyticsButton}
+                  >
+                      <Icon name="chart-line" size={20} color="#fff" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    // style={styles.addButton}
+                    onPress={() => navigation.navigate('CreateHabit')}>
+                      <Icon name="plus-circle" size={24} color="#fff" />
+                  </TouchableOpacity>
+              </View>
+          </View>
 
-                <View style={styles.headerActions}>
-                    <TouchableOpacity style={styles.proButton}>
-                        <Text style={styles.proButtonText}>PRO</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.analyticsButton}>
-                        <Icon name="chart-line" size={20} color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={() => navigation.navigate('CreateHabit')}>
-                        <Icon name="plus" size={20} color="#fff" />
-                    </TouchableOpacity>
+          <ScrollView style={styles.habitsList}>
+              {habits.map(habit => (
+                <HabitItem key={habit.id} habit={habit} />
+              ))}
+
+              {habits.length === 0 && (
+                <View style={styles.emptyState}>
+                    <Icon name="format-list-checks" size={48} color="#444" />
+                    <Text style={styles.emptyText}>No habits yet</Text>
+                    <Text style={styles.emptySubtext}>
+                        Tap the + button to create your first habit
+                    </Text>
                 </View>
-            </View>
-
-            <ScrollView style={styles.habitsList}>
-                {habits.map(habit => (
-                    <HabitItem key={habit.id} habit={habit} />
-                ))}
-
-                {habits.length === 0 && (
-                    <View style={styles.emptyState}>
-                        <Icon name="format-list-checks" size={48} color="#444" />
-                        <Text style={styles.emptyText}>No habits yet</Text>
-                        <Text style={styles.emptySubtext}>
-                            Tap the + button to create your first habit
-                        </Text>
-                    </View>
-                )}
-            </ScrollView>
-        </SafeAreaView>
+              )}
+          </ScrollView>
+      </SafeAreaView>
     );
 };
 
@@ -178,18 +181,23 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 15,
     },
+    leftHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
     settingsButton: {
         padding: 8,
+        marginRight: 8,
     },
     appTitle: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: 'bold',
         color: '#fff',
     },
     headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
+        gap: 8,
     },
     proButton: {
         backgroundColor: '#333',
@@ -204,11 +212,18 @@ const styles = StyleSheet.create({
     },
     analyticsButton: {
         padding: 8,
+        backgroundColor: '#333',
+        borderRadius: 4,
     },
     addButton: {
         backgroundColor: '#007AFF',
-        padding: 8,
-        borderRadius: 16,
+        padding: 6, // Slightly smaller padding for better appearance
+        borderRadius: 20, // Increased border radius for circular look
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+        elevation: 5,
     },
     habitsList: {
         flex: 1,
