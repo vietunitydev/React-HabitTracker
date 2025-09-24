@@ -3,11 +3,11 @@ import {
     View,
     Text,
     TouchableOpacity,
-    SafeAreaView,
     StyleSheet,
     ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SettingsScreen = ({navigation}) => {
     const SettingItem = ({icon, title, subtitle, onPress, iconColor = '#007AFF'}) => (
