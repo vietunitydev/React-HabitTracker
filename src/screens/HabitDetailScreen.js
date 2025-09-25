@@ -10,13 +10,15 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import ComingSoonDialog from "../components/ComingSoonDialog";
 
 const HabitDetailScreen = ({navigation, route}) => {
     const [habit, setHabit] = useState(route.params.habit);
     const [currentStreak, setCurrentStreak] = useState(0);
     const [longestStreak, setLongestStreak] = useState(0);
     const [totalCompletions, setTotalCompletions] = useState(0);
+    const [showDialog, setShowDialog] = useState(false);
+
 
     // For month navigation in calendar (Google-like)
     const today = new Date();
@@ -408,17 +410,23 @@ const HabitDetailScreen = ({navigation, route}) => {
                   <View style={styles.streakRight}>
                       <TouchableOpacity
                         style={styles.iconButton}
-                        onPress={() => navigation.navigate('CreateHabit', {habit})}
+                        // onPress={() => navigation.navigate('CreateHabit', {habit})}
+                        onPress={() => setShowDialog(true)}
                       >
                           <Icon name="pencil" size={20} color="#fff" />
                       </TouchableOpacity>
 
                       <TouchableOpacity
                         style={styles.iconButton}
-                        onPress={() => navigation.navigate('Settings')}
+                        // onPress={() => navigation.navigate('Settings')}
+                        onPress={() => setShowDialog(true)}
                       >
                           <Icon name="cog" size={20} color="#fff" />
                       </TouchableOpacity>
+
+                      {/*<ComingSoonButton label="Sửa" icon="pencil" />*/}
+                      {/*<ComingSoonButton label="Cài đặt" icon="cog" />*/}
+
                   </View>
               </View>
 
@@ -460,6 +468,11 @@ const HabitDetailScreen = ({navigation, route}) => {
               {/*    </TouchableOpacity>*/}
               {/*</View>*/}
           </ScrollView>
+
+          <ComingSoonDialog
+            visible={showDialog}
+            onClose={() => setShowDialog(false)}
+          />
       </SafeAreaView>
     );
 };
