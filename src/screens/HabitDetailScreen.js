@@ -1,16 +1,15 @@
-import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo, useContext } from 'react';
 import {
     View,
     Text,
     TouchableOpacity,
     ScrollView,
     StyleSheet,
-    Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import ComingSoonDialog from "../components/ComingSoonDialog";
+import { HabitContext } from '../contexts/HabitContext';
+import ComingSoonDialog from '../components/ComingSoonDialog';
 
 // Static habit info component
 const HabitInfo = memo(({ name, icon, color, description }) => (
@@ -338,88 +337,29 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
 });
 
 const HabitDetailScreen = ({ navigation, route }) => {
-    const [habitInfo, setHabitInfo] = useState({
-        id: route.params.habit.id,
-        name: route.params.habit.name,
-        icon: route.params.habit.icon,
-        color: route.params.habit.color,
-        description: route.params.habit.description,
-        completionsPerDay: route.params.habit.completionsPerDay,
-        goalStreak: route.params.habit.goalStreak,
-    });
-    const [completionCounts, setCompletionCounts] = useState(route.params.habit.completionCounts || {});
-    const [completions, setCompletions] = useState(route.params.habit.completions || []);
+    const { habits, updateHabit, toggleHabitCompletion } = useContext(HabitContext);
+    const habitInfo = habits.find((h) => h.id === route.params.habit.id) || route.params.habit;
     const [currentStreak, setCurrentStreak] = useState(0);
     const [longestStreak, setLongestStreak] = useState(0);
     const [totalCompletions, setTotalCompletions] = useState(0);
     const [showDialog, setShowDialog] = useState(false);
 
-    // Persist habit data to AsyncStorage
-    const persistHabitUpdate = async (updatedData) => {
-        try {
-            const habitsData = await AsyncStorage.getItem('habits');
-            const habits = habitsData ? JSON.parse(habitsData) : [];
-            const updatedHabits = habits.map((h) =>
-              h.id === habitInfo.id
-                ? { ...h, completionCounts, completions, ...updatedData }
-                : h
-            );
-            await AsyncStorage.setItem('habits', JSON.stringify(updatedHabits));
-        } catch (error) {
-            console.error('Error persisting habit:', error);
-        }
-    };
-
-    // Update completion count for a specific date
-    const setCompletionCount = async (dateString, count) => {
-        const newCompletionCounts = { ...completionCounts };
-        const newCompletions = [...completions];
-
-        if (count === 0) {
-            delete newCompletionCounts[dateString];
-            const idx = newCompletions.indexOf(dateString);
-            if (idx > -1) newCompletions.splice(idx, 1);
-        } else {
-            newCompletionCounts[dateString] = count;
-            if (count >= habitInfo.completionsPerDay && !newCompletions.includes(dateString)) {
-                newCompletions.push(dateString);
-            } else if (count < habitInfo.completionsPerDay && newCompletions.includes(dateString)) {
-                const idx = newCompletions.indexOf(dateString);
-                if (idx > -1) newCompletions.splice(idx, 1);
-            }
-        }
-
-        setCompletionCounts(newCompletionCounts);
-        setCompletions(newCompletions);
-        await persistHabitUpdate({ completionCounts: newCompletionCounts, completions: newCompletions });
-    };
-
     // Toggle date completion
     const toggleDate = async (dateString) => {
-        const currentCount = completionCounts[dateString] || 0;
-        let newCount;
-
-        if (habitInfo.completionsPerDay === 1) {
-            newCount = currentCount >= 1 ? 0 : 1;
-        } else {
-            if (currentCount >= habitInfo.completionsPerDay) newCount = 0;
-            else newCount = currentCount + 1;
-        }
-
-        await setCompletionCount(dateString, newCount);
+        toggleHabitCompletion(habitInfo.id, dateString);
     };
 
     // Calculate stats
     useEffect(() => {
-        setTotalCompletions(completions.length);
+        setTotalCompletions(habitInfo.completions?.length || 0);
 
         // Current streak
         const todayDate = new Date();
         let streak = 0;
         let check = new Date(todayDate);
         while (true) {
-            const d = check.toISOString().split('T')[0];
-            if (completions.includes(d)) {
+            const d = formatDateLocal(check);
+            if (habitInfo.completions?.includes(d)) {
                 streak++;
                 check.setDate(check.getDate() - 1);
             } else break;
@@ -427,11 +367,13 @@ const HabitDetailScreen = ({ navigation, route }) => {
         setCurrentStreak(streak);
 
         // Longest streak
-        if (completions.length === 0) {
+        if (!habitInfo.completions || habitInfo.completions.length === 0) {
             setLongestStreak(0);
             return;
         }
-        const sorted = completions.map((s) => new Date(s)).sort((a, b) => a - b);
+        const sorted = habitInfo.completions
+          .map((s) => new Date(s))
+          .sort((a, b) => a - b);
         let maxStreak = 1,
           cur = 1;
         for (let i = 1; i < sorted.length; i++) {
@@ -444,7 +386,7 @@ const HabitDetailScreen = ({ navigation, route }) => {
         }
         maxStreak = Math.max(maxStreak, cur);
         setLongestStreak(maxStreak);
-    }, [completions]);
+    }, [habitInfo.completions]);
 
     return (
       <SafeAreaView style={styles.container}>
@@ -463,8 +405,8 @@ const HabitDetailScreen = ({ navigation, route }) => {
                 description={habitInfo.description}
               />
               <HistoryGrid
-                completionCounts={completionCounts}
-                completionsPerDay={habitInfo.completionsPerDay}
+                completionCounts={habitInfo.completionCounts || {}}
+                completionsPerDay={habitInfo.completionsPerDay || 1}
                 color={habitInfo.color}
               />
               <StreakBar
@@ -474,8 +416,8 @@ const HabitDetailScreen = ({ navigation, route }) => {
                 onSettings={() => setShowDialog(true)}
               />
               <MonthCalendar
-                completionCounts={completionCounts}
-                completionsPerDay={habitInfo.completionsPerDay}
+                completionCounts={habitInfo.completionCounts || {}}
+                completionsPerDay={habitInfo.completionsPerDay || 1}
                 color={habitInfo.color}
                 onToggleDate={toggleDate}
               />

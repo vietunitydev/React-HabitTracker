@@ -1,4 +1,5 @@
-import React, {useState, useEffect} from 'react';
+// src/screens/CreateHabitScreen.js
+import React, { useState, useEffect, useContext } from 'react';
 import {
     View,
     Text,
@@ -10,79 +11,86 @@ import {
     Switch,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { HabitColor } from '../constants/HabitColor';
+import { HabitContext } from '../contexts/HabitContext';
 
-const CreateHabitScreen = ({navigation, route}) => {
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [selectedIcon, setSelectedIcon] = useState('pen');
-    const [selectedColor, setSelectedColor] = useState('#FF6B6B');
-    const [goalStreak, setGoalStreak] = useState('7');
-    const [notificationEnabled, setNotificationEnabled] = useState(false);
-    const [notificationTime, setNotificationTime] = useState(new Date());
+const CreateHabitScreen = ({ navigation, route }) => {
+    const { addHabit, updateHabit } = useContext(HabitContext);
+    const isEditing = !!route.params?.habit;
+    const [name, setName] = useState(route.params?.habit?.name || '');
+    const [description, setDescription] = useState(route.params?.habit?.description || '');
+    const [selectedIcon, setSelectedIcon] = useState(route.params?.habit?.icon || 'pen');
+    const [selectedColor, setSelectedColor] = useState(route.params?.habit?.color || '#FF6B6B');
+    const [goalStreak, setGoalStreak] = useState(
+      route.params?.habit?.goalStreak?.toString() || '7'
+    );
+    const [notificationEnabled, setNotificationEnabled] = useState(
+      route.params?.habit?.notification?.enabled || false
+    );
+    const [notificationTime, setNotificationTime] = useState(
+      route.params?.habit?.notification?.time
+        ? new Date(`2023-01-01T${route.params.habit.notification.time}:00`)
+        : new Date()
+    );
     const [showTimePicker, setShowTimePicker] = useState(false);
-    const [category, setCategory] = useState('Health');
-    const [completionsPerDay, setCompletionsPerDay] = useState('1');
+    const [category, setCategory] = useState(route.params?.habit?.category || 'Health');
+    const [completionsPerDay, setCompletionsPerDay] = useState(
+      route.params?.habit?.completionsPerDay?.toString() || '1'
+    );
 
     const categories = [
-        'Health',
-        'Fitness',
-        'Productivity',
-        'Learning',
-        'Mindfulness',
-        'Social',
-        'Creativity',
-        'Finance',
-        'Career',
-        'Personal'
+        'Sức khỏe',
+        'Thể dục',
+        'Năng suất',
+        'Học tập',
+        'Chánh niệm',
+        'Xã hội',
+        'Sáng tạo',
+        'Tài chính',
+        'Sự nghiệp',
+        'Cá nhân',
     ];
 
-    // Nhận icon từ ChooseIconImage screen
     useEffect(() => {
         if (route.params?.selectedIcon) {
             setSelectedIcon(route.params.selectedIcon);
         }
     }, [route.params]);
 
-    const handleSave = async () => {
+    const handleSave = () => {
         if (!name.trim()) {
-            Alert.alert('Error', 'Please enter a habit name');
+            Alert.alert('Lỗi', 'Vui lòng nhập tên thói quen');
             return;
         }
 
-        try {
-            const existingHabits = await AsyncStorage.getItem('habits');
-            const habits = existingHabits ? JSON.parse(existingHabits) : [];
+        const habitData = {
+            id: isEditing ? route.params.habit.id : Date.now().toString(), // ID cho thói quen mới
+            name: name.trim(),
+            description: description.trim(),
+            icon: selectedIcon,
+            color: selectedColor,
+            goalStreak: parseInt(goalStreak) || 7,
+            notification: {
+                enabled: notificationEnabled,
+                time: notificationTime.toTimeString().slice(0, 5), // Lưu thời gian dạng HH:mm
+            },
+            category,
+            completionsPerDay: parseInt(completionsPerDay) || 1,
+            completions: isEditing ? route.params.habit.completions || [] : [],
+            completionCounts: isEditing ? route.params.habit.completionCounts || {} : {},
+            createdAt: isEditing ? route.params.habit.createdAt : new Date().toISOString(),
+        };
 
-            const newHabit = {
-                id: Date.now().toString(),
-                name: name.trim(),
-                description: description.trim(),
-                icon: selectedIcon,
-                color: selectedColor,
-                goalStreak: parseInt(goalStreak),
-                notification: {
-                    enabled: notificationEnabled,
-                    time: notificationTime.toTimeString().slice(0, 5),
-                },
-                category: category,
-                completionsPerDay: parseInt(completionsPerDay),
-                completions: [],
-                createdAt: new Date().toISOString(),
-            };
-
-            habits.push(newHabit);
-            await AsyncStorage.setItem('habits', JSON.stringify(habits));
-
-            navigation.popToTop();
-        } catch (error) {
-            console.error('Error saving habit:', error);
-            Alert.alert('Error', 'Failed to save habit');
+        if (isEditing) {
+            updateHabit(habitData); // Cập nhật thói quen
+        } else {
+            addHabit(habitData); // Thêm thói quen mới
         }
+
+        navigation.popToTop();
     };
 
     const handleTimeChange = (event, selectedTime) => {
@@ -92,12 +100,14 @@ const CreateHabitScreen = ({navigation, route}) => {
         }
     };
 
+    // Mở màn hình chọn biểu tượng
     const openIconSelector = () => {
         navigation.navigate('ChooseIconImage', {
-            currentIcon: selectedIcon
+            currentIcon: selectedIcon,
         });
     };
 
+    // Tạo ma trận màu
     const colorMatrix = [];
     for (let i = 0; i < HabitColor.length; i += 8) {
         colorMatrix.push(HabitColor.slice(i, i + 8));
@@ -110,39 +120,40 @@ const CreateHabitScreen = ({navigation, route}) => {
           <View style={styles.header}>
               <TouchableOpacity
                 style={styles.closeButton}
-                onPress={() => navigation.goBack()}>
+                onPress={() => navigation.goBack()}
+              >
                   <Icon name="close" size={24} color="#fff" />
               </TouchableOpacity>
-              <Text style={styles.title}>New Habit</Text>
+              <Text style={styles.title}>{isEditing ? 'Chỉnh sửa thói quen' : 'Tạo thói quen mới'}</Text>
               <View style={styles.headerSpacer} />
           </View>
 
           <ScrollView style={styles.content}>
               <TouchableOpacity style={styles.iconPreview} onPress={openIconSelector}>
-                  <View style={[styles.previewIcon, {backgroundColor: selectedColor}]}>
+                  <View style={[styles.previewIcon, { backgroundColor: selectedColor }]}>
                       <Icon name={selectedIcon} size={32} color="#fff" />
                   </View>
-                  <Text style={styles.iconHint}>Tap to change icon</Text>
+                  <Text style={styles.iconHint}>Chạm để thay đổi biểu tượng</Text>
               </TouchableOpacity>
 
               <View style={styles.section}>
-                  <Text style={styles.label}>Name</Text>
+                  <Text style={styles.label}>Tên</Text>
                   <TextInput
                     style={styles.input}
                     value={name}
                     onChangeText={setName}
-                    placeholder="Enter habit name"
+                    placeholder="Nhập tên thói quen"
                     placeholderTextColor="#666"
                   />
               </View>
 
               <View style={styles.section}>
-                  <Text style={styles.label}>Description</Text>
+                  <Text style={styles.label}>Mô tả</Text>
                   <TextInput
-                    style={[styles.input]}
+                    style={[styles.input, styles.textArea]}
                     value={description}
                     onChangeText={setDescription}
-                    placeholder="Enter description (optional)"
+                    placeholder="Nhập mô tả (không bắt buộc)"
                     placeholderTextColor="#666"
                     multiline
                     numberOfLines={3}
@@ -150,14 +161,15 @@ const CreateHabitScreen = ({navigation, route}) => {
               </View>
 
               <View style={styles.section}>
-                  <Text style={styles.label}>Category</Text>
+                  <Text style={styles.label}>Danh mục</Text>
                   <View style={styles.pickerContainer}>
                       <Picker
                         selectedValue={category}
                         onValueChange={setCategory}
                         style={styles.picker}
-                        dropdownIconColor="#fff">
-                          {categories.map(cat => (
+                        dropdownIconColor="#fff"
+                      >
+                          {categories.map((cat) => (
                             <Picker.Item key={cat} label={cat} value={cat} color="#fff" />
                           ))}
                       </Picker>
@@ -165,7 +177,7 @@ const CreateHabitScreen = ({navigation, route}) => {
               </View>
 
               <View style={styles.section}>
-                  <Text style={styles.label}>Goal Streak (days)</Text>
+                  <Text style={styles.label}>Chuỗi mục tiêu (ngày)</Text>
                   <TextInput
                     style={styles.input}
                     value={goalStreak}
@@ -177,7 +189,7 @@ const CreateHabitScreen = ({navigation, route}) => {
               </View>
 
               <View style={styles.section}>
-                  <Text style={styles.label}>Completions per day</Text>
+                  <Text style={styles.label}>Số lần hoàn thành mỗi ngày</Text>
                   <TextInput
                     style={styles.input}
                     value={completionsPerDay}
@@ -190,18 +202,19 @@ const CreateHabitScreen = ({navigation, route}) => {
 
               <View style={styles.section}>
                   <View style={styles.notificationHeader}>
-                      <Text style={styles.label}>Notification</Text>
+                      <Text style={styles.label}>Thông báo</Text>
                       <Switch
                         value={notificationEnabled}
                         onValueChange={setNotificationEnabled}
-                        trackColor={{false: '#2a2a2a', true: '#007AFF'}}
+                        trackColor={{ false: '#2a2a2a', true: '#007AFF' }}
                         thumbColor={notificationEnabled ? '#fff' : '#666'}
                       />
                   </View>
                   {notificationEnabled && (
                     <TouchableOpacity
                       style={styles.timeButton}
-                      onPress={() => setShowTimePicker(true)}>
+                      onPress={() => setShowTimePicker(true)}
+                    >
                         <Text style={styles.timeButtonText}>
                             {notificationTime.toTimeString().slice(0, 5)}
                         </Text>
@@ -211,16 +224,16 @@ const CreateHabitScreen = ({navigation, route}) => {
               </View>
 
               <View style={styles.section}>
-                  <Text style={styles.label}>Color</Text>
+                  <Text style={styles.label}>Màu sắc</Text>
                   <View style={styles.colorMatrix}>
                       {colorMatrix.map((row, rowIndex) => (
                         <View key={rowIndex} style={styles.colorRow}>
-                            {row.map(color => (
+                            {row.map((color) => (
                               <TouchableOpacity
                                 key={color}
                                 style={[
                                     styles.colorOption,
-                                    {backgroundColor: color},
+                                    { backgroundColor: color },
                                     selectedColor === color && styles.selectedColorOption,
                                 ]}
                                 onPress={() => setSelectedColor(color)}
@@ -233,17 +246,17 @@ const CreateHabitScreen = ({navigation, route}) => {
           </ScrollView>
 
           <TouchableOpacity
-            style={[
-                styles.saveButton,
-                !isNameFilled && styles.saveButtonDisabled
-            ]}
+            style={[styles.saveButton, !isNameFilled && styles.saveButtonDisabled]}
             onPress={handleSave}
-            disabled={!isNameFilled}>
-              <Text style={[
-                  styles.saveButtonText,
-                  !isNameFilled && styles.saveButtonTextDisabled
-              ]}>
-                  Save
+            disabled={!isNameFilled}
+          >
+              <Text
+                style={[
+                    styles.saveButtonText,
+                    !isNameFilled && styles.saveButtonTextDisabled,
+                ]}
+              >
+                  Lưu
               </Text>
           </TouchableOpacity>
 

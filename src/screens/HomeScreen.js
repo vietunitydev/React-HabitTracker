@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, memo, useCallback, useContext } from 'react';
 import {
     View,
     Text,
     TouchableOpacity,
     ScrollView,
     StyleSheet,
-    Dimensions,
     Animated,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { HabitContext } from '../contexts/HabitContext';
 
 const formatDateLocal = (date) => {
     const d = new Date(date);
@@ -388,28 +388,7 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
 }, (prevProps, nextProps) => prevProps.habit.id === nextProps.habit.id);
 
 const HomeScreen = ({ navigation }) => {
-    const [habits, setHabits] = useState([]);
-
-    useEffect(() => {
-        loadHabits();
-    }, []);
-
-    const loadHabits = async () => {
-        try {
-            const habitsData = await AsyncStorage.getItem('habits');
-            if (habitsData) {
-                setHabits(JSON.parse(habitsData));
-            }
-        } catch (error) {
-            console.error('Error loading habits:', error);
-        }
-    };
-
-    const handleArchiveHabit = async (habitId) => {
-        const updatedHabits = habits.filter(habit => habit.id !== habitId);
-        setHabits(updatedHabits);
-        await AsyncStorage.setItem('habits', JSON.stringify(updatedHabits));
-    };
+    const { habits, archiveHabit } = useContext(HabitContext);
 
     return (
       <SafeAreaView style={styles.container}>
@@ -417,7 +396,8 @@ const HomeScreen = ({ navigation }) => {
               <View style={styles.leftHeader}>
                   <TouchableOpacity
                     style={styles.settingsButton}
-                    onPress={() => navigation.navigate('Settings')}>
+                    onPress={() => navigation.navigate('Settings')}
+                  >
                       <Icon name="cog" size={24} color="#fff" />
                   </TouchableOpacity>
                   <Text style={styles.appTitle}>Habit Tracker</Text>
@@ -435,17 +415,13 @@ const HomeScreen = ({ navigation }) => {
                   </TouchableOpacity>
               </View>
           </View>
-
-          <ScrollView
-            style={styles.habitsList}
-            scrollEnabled={true}
-          >
-              {habits.filter(habit => habit && habit.id).map(habit => (
+          <ScrollView style={styles.habitsList} scrollEnabled={true}>
+              {habits.filter((habit) => habit && habit.id).map((habit) => (
                 <HabitItem
                   key={habit.id}
                   habit={habit}
                   navigation={navigation}
-                  onArchive={handleArchiveHabit}
+                  onArchive={archiveHabit}
                 />
               ))}
               {habits.length === 0 && (
