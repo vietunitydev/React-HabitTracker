@@ -485,13 +485,13 @@ const HomeScreen = ({navigation}) => {
 
           {longPressedHabit && (
             <View style={styles.longPressMenu}>
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  onPress={handleEditHabit}
-                >
-                    <Icon name="pencil" size={20} color="#fff" />
-                    <Text style={styles.menuButtonText}>Edit</Text>
-                </TouchableOpacity>
+                {/*<TouchableOpacity*/}
+                {/*  style={styles.menuButton}*/}
+                {/*  onPress={handleEditHabit}*/}
+                {/*>*/}
+                {/*    <Icon name="pencil" size={20} color="#fff" />*/}
+                {/*    <Text style={styles.menuButtonText}>Edit</Text>*/}
+                {/*</TouchableOpacity>*/}
                 <TouchableOpacity
                   style={styles.menuButton}
                   onPress={handleArchiveHabit}
