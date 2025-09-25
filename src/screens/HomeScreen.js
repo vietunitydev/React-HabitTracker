@@ -19,8 +19,7 @@ const HomeScreen = ({navigation}) => {
     const [longPressedHabit, setLongPressedHabit] = useState(null);
     const [overlayOpacity] = useState(new Animated.Value(0));
     const [habitScale] = useState(new Animated.Value(1));
-    const scrollRefs = useRef({}); // Đổi thành object để lưu refs cho từng habit
-
+    const scrollRefs = useRef({});
     useEffect(() => {
         loadHabits();
     }, []);
@@ -168,7 +167,6 @@ const HomeScreen = ({navigation}) => {
     };
 
     const HabitItem = ({habit}) => {
-        // Kiểm tra habit tồn tại
         if (!habit || !habit.id) {
             return null;
         }
@@ -178,9 +176,8 @@ const HomeScreen = ({navigation}) => {
         const todayCompleted = habit.completions?.includes(today) || false;
         const isLongPressed = longPressedHabit?.id === habit.id;
 
-        // Hàm để scroll đến cuối
         const scrollToEnd = () => {
-            if (!habit?.id) return; // Kiểm tra habit.id tồn tại
+            if (!habit?.id) return;
             const scrollRef = scrollRefs.current[habit.id];
             if (scrollRef) {
                 // Sử dụng setTimeout để đảm bảo ScrollView đã render xong
