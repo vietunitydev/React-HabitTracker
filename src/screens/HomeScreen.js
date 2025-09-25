@@ -141,6 +141,7 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
 
     useEffect(() => {
         setCommitGrid(generateCommitGrid(habitData));
+        console.log(habitData);
     }, [habitData, generateCommitGrid]);
 
     const toggleHabitCompletion = async (date) => {
