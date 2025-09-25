@@ -177,7 +177,7 @@ const HabitDetailScreen = ({navigation, route}) => {
             });
         }
 
-        return grid.reverse();
+        return grid;
     };
 
     // Calendar for one month (viewMonth)
@@ -227,10 +227,7 @@ const HabitDetailScreen = ({navigation, route}) => {
     const HistoryGrid = ({h}) => {
         const grid = generateCommitGrid(h);
         useEffect(()=> {
-            // scroll to end on mount
-            if (scrollRef.current && scrollRef.current.scrollToEnd) {
-                setTimeout(()=> scrollRef.current.scrollToEnd({animated:false}), 50);
-            }
+
         }, [h]);
         return (
           <View style={{marginTop: 1}}>
@@ -238,7 +235,7 @@ const HabitDetailScreen = ({navigation, route}) => {
                 ref={scrollRef}
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                // contentContainerStyle={{paddingRight: 12}}
+                style={styles.commitGridScroll}
               >
                   {grid.map((monthData, i) => (
                     <View key={i} style={styles.monthColumn}>
@@ -505,8 +502,9 @@ const styles = StyleSheet.create({
 
     sectionTitleSmall: { color: '#999', fontSize: 12, marginBottom: 8 },
 
+    commitGridScroll: { marginTop: 8, transform: [{ scaleX: -1 }] },
     // History grid styles (reused look)
-    monthColumn: { marginRight: 7, alignItems: 'center' },
+    monthColumn: { marginRight: 7, alignItems: 'center', transform: [{ scaleX: -1 }] },
     monthLabel: { color: '#999', fontSize: 10, fontWeight: '500', marginBottom: 6, textAlign: 'center', width: 32 },
     monthGrid: { flexDirection: 'column' },
     dayRow: { flexDirection: 'row', marginBottom: 2 },
