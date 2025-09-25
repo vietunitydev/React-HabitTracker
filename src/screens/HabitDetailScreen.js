@@ -51,6 +51,15 @@ const StreakBar = memo(({ currentStreak, goalStreak, onEdit, onSettings }) => (
   </View>
 ));
 
+const formatDateLocal = (date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 // History grid component
 const HistoryGrid = memo(({ completionCounts, completionsPerDay, color }) => {
     const scrollRef = useRef(null);
@@ -82,8 +91,7 @@ const HistoryGrid = memo(({ completionCounts, completionsPerDay, color }) => {
                 for (let day = 0; day < 7; day++) {
                     const currentDate = new Date(startOfWeek);
                     currentDate.setDate(startOfWeek.getDate() + week * 7 + day);
-
-                    const dateString = currentDate.toISOString().split('T')[0];
+                    const dateString = formatDateLocal(currentDate)
                     const cdNorm = normalizeDate(currentDate);
 
                     const isInCurrentMonth = currentDate.getMonth() === month;
@@ -184,6 +192,7 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
         return d;
     };
 
+
     const generateMonthCalendar = (monthDate) => {
         const todayNorm = normalizeDate(new Date());
         const start = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
@@ -200,11 +209,13 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
         const weeks = [];
         let current = new Date(startOfWeek);
 
+        console.log(current.toString(), endOfWeek.toString());
+
         while (current <= endOfWeek) {
             const week = [];
             for (let d = 0; d < 7; d++) {
                 const cd = normalizeDate(current);
-                const dateString = cd.toISOString().split('T')[0];
+                const dateString = formatDateLocal(cd);
                 const isInMonth = cd.getMonth() === monthDate.getMonth();
                 const isToday = cd.getTime() === todayNorm.getTime();
                 const isFuture = cd > todayNorm && !isToday;
@@ -212,6 +223,7 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
 
                 week.push({
                     date: cd,
+                    datea: current.toString(),
                     dateString,
                     isInMonth,
                     isToday,
@@ -224,6 +236,7 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
             weeks.push(week);
         }
 
+        console.log(weeks);
         return weeks;
     };
 
@@ -282,7 +295,6 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
                       ? (day.count > 0 ? getCompletionColorForDay(day.count) : '#333')
                       : 'transparent';
 
-                    console.log(day, day.date.getDate())
                     return (
                       <TouchableOpacity
                         key={di}
