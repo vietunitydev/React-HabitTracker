@@ -12,14 +12,16 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { width } = Dimensions.get('window');
+const formatDateLocal = (date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 const ProgressCircle = ({ progress, size = 28, strokeWidth = 2, color = '#34C759' }) => {
-    // const radius = (size - strokeWidth) / 2;
-    // const circumference = radius * 2 * Math.PI;
-    // const strokeDasharray = `${circumference} ${circumference}`;
-    // const strokeDashoffset = circumference - progress * circumference;
-
     return (
       <View style={[styles.progressCircle, { width: size, height: size }]}>
           <Animated.View style={styles.progressBackground}>
@@ -86,6 +88,8 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
 
     const generateCommitGrid = useCallback((habit) => {
         const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = formatDateLocal(today);
         const currentMonth = today.getMonth();
         const currentYear = today.getFullYear();
         const grid = [];
@@ -97,7 +101,6 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
             const month = targetDate.getMonth();
             const monthGrid = [];
             const firstDay = new Date(year, month, 1);
-            const lastDay = new Date(year, month + 1, 0);
             const startOfWeek = new Date(firstDay);
             startOfWeek.setDate(firstDay.getDate() - firstDay.getDay());
 
@@ -106,11 +109,13 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
                 for (let day = 0; day < 7; day++) {
                     const currentDate = new Date(startOfWeek);
                     currentDate.setDate(startOfWeek.getDate() + week * 7 + day);
-                    const dateString = currentDate.toISOString().split('T')[0];
+                    currentDate.setHours(0, 0, 0, 0);
+                    const dateString = formatDateLocal(currentDate);
                     const isInCurrentMonth = currentDate.getMonth() === month;
                     const completionCount = getCompletionCount(dateString);
                     const isCompleted = completions.includes(dateString);
-                    const isFuture = currentDate > today;
+                    const isSameDay = dateString === todayStr;
+                    const isFuture = currentDate > today && !isSameDay;
 
                     weekDays.push({
                         date: dateString,
@@ -137,14 +142,6 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
     useEffect(() => {
         setCommitGrid(generateCommitGrid(habitData));
     }, [habitData, generateCommitGrid]);
-
-    // const scrollToEnd = useCallback(() => {
-    //     if (scrollRef.current) {
-    //         setTimeout(() => {
-    //             scrollRef.current.scrollToEnd({ animated: false });
-    //         }, 50);
-    //     }
-    // }, []);
 
     const toggleHabitCompletion = async (date) => {
         const completionsPerDay = habitData.completionsPerDay || 1;
@@ -222,19 +219,19 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
         });
     };
 
-    const handleEditHabit = () => {
-        handleLongPressEnd();
-        navigation.navigate('CreateHabit', { habit: habitData });
-    };
+    // const handleEditHabit = () => {
+    //     handleLongPressEnd();
+    //     navigation.navigate('CreateHabit', { habit: habitData });
+    // };
 
     const handleArchiveHabit = () => {
         onArchive(habitData.id);
         handleLongPressEnd();
     };
 
-    const today = new Date().toISOString().split('T')[0];
+    const todayStr = formatDateLocal(new Date());
     const completionsPerDay = habitData.completionsPerDay || 1;
-    const todayCompletionCount = getCompletionCount(today);
+    const todayCompletionCount = getCompletionCount(todayStr);
     const todayCompleted = todayCompletionCount >= completionsPerDay;
     const progress = completionsPerDay > 1 ? todayCompletionCount / completionsPerDay : (todayCompleted ? 1 : 0);
 
@@ -277,7 +274,7 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
                 onPress={(e) => {
                     e.stopPropagation();
                     if (!isLongPressed) {
-                        toggleHabitCompletion(today);
+                        toggleHabitCompletion(todayStr);
                     }
                 }}
               >
@@ -332,19 +329,23 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
                               <View key={dayOfWeek} style={styles.dayRow}>
                                   {monthData.weeks.map((week, weekIndex) => {
                                       const dayData = week[dayOfWeek];
-                                      const dayColor = dayData.isInCurrentMonth && dayData.completionCount > 0
-                                        ? getCompletionColor(dayData.completionCount)
-                                        : (dayData.isFuture ? '#222' : '#333');
+                                      if (!dayData) return null;
+
+                                      const dayColor = (() => {
+                                          if (!dayData.isInCurrentMonth) return 'transparent';
+                                          if (dayData.isFuture) return '#222';
+                                          if (dayData.completionCount > 0) {
+                                              return getCompletionColor(dayData.completionCount);
+                                          }
+                                          return '#333';
+                                      })();
 
                                       return (
                                         <View
                                           key={weekIndex}
                                           style={[
                                               styles.commitDay,
-                                              !dayData.isInCurrentMonth && styles.commitDayOutside,
-                                              dayData.isInCurrentMonth && {
-                                                  backgroundColor: dayColor
-                                              },
+                                              { backgroundColor: dayColor },
                                           ]}
                                         />
                                       );
@@ -385,7 +386,6 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
     );
 }, (prevProps, nextProps) => prevProps.habit.id === nextProps.habit.id);
 
-// HomeScreen Component (giữ nguyên)
 const HomeScreen = ({ navigation }) => {
     const [habits, setHabits] = useState([]);
 

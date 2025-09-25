@@ -55,8 +55,15 @@ const StreakBar = memo(({ currentStreak, goalStreak, onEdit, onSettings }) => (
 const HistoryGrid = memo(({ completionCounts, completionsPerDay, color }) => {
     const scrollRef = useRef(null);
 
+    const normalizeDate = (date) => {
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        return d;
+    };
+
+    const now = normalizeDate(new Date());
+
     const generateCommitGrid = () => {
-        const now = new Date();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
         const grid = [];
@@ -77,10 +84,13 @@ const HistoryGrid = memo(({ completionCounts, completionsPerDay, color }) => {
                     currentDate.setDate(startOfWeek.getDate() + week * 7 + day);
 
                     const dateString = currentDate.toISOString().split('T')[0];
+                    const cdNorm = normalizeDate(currentDate);
+
                     const isInCurrentMonth = currentDate.getMonth() === month;
                     const completionCount = completionCounts[dateString] || 0;
                     const isCompleted = completionCount >= completionsPerDay;
-                    const isFuture = currentDate > now;
+                    const isToday = cdNorm.getTime() === now.getTime();
+                    const isFuture = cdNorm > now && !isToday;
 
                     weekDays.push({
                         date: dateString,
@@ -88,6 +98,7 @@ const HistoryGrid = memo(({ completionCounts, completionsPerDay, color }) => {
                         isCompleted,
                         isInCurrentMonth,
                         isFuture,
+                        isToday,
                     });
                 }
                 monthGrid.push(weekDays);
@@ -167,22 +178,38 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
     const minMonth = new Date(today.getFullYear(), today.getMonth() - 11, 1);
     const [viewMonth, setViewMonth] = useState(maxMonth);
 
+    const normalizeDate = (date) => {
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        return d;
+    };
+
     const generateMonthCalendar = (monthDate) => {
+        const todayNorm = normalizeDate(new Date());
         const start = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
         const end = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+
+        // Bắt đầu từ chủ nhật của tuần chứa ngày 1
         const startOfWeek = new Date(start);
         startOfWeek.setDate(start.getDate() - start.getDay());
+
+        // Kết thúc ở thứ bảy của tuần chứa ngày cuối cùng
+        const endOfWeek = new Date(end);
+        endOfWeek.setDate(end.getDate() + (6 - end.getDay()));
+
         const weeks = [];
-        for (let w = 0; w < 6; w++) {
+        let current = new Date(startOfWeek);
+
+        while (current <= endOfWeek) {
             const week = [];
             for (let d = 0; d < 7; d++) {
-                const cd = new Date(startOfWeek);
-                cd.setDate(startOfWeek.getDate() + w * 7 + d);
+                const cd = normalizeDate(current);
                 const dateString = cd.toISOString().split('T')[0];
                 const isInMonth = cd.getMonth() === monthDate.getMonth();
-                const isToday = dateString === new Date().toISOString().split('T')[0];
-                const isFuture = cd > today;
+                const isToday = cd.getTime() === todayNorm.getTime();
+                const isFuture = cd > todayNorm && !isToday;
                 const count = completionCounts[dateString] || 0;
+
                 week.push({
                     date: cd,
                     dateString,
@@ -191,9 +218,12 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
                     isFuture,
                     count,
                 });
+
+                current.setDate(current.getDate() + 1);
             }
             weeks.push(week);
         }
+
         return weeks;
     };
 
@@ -251,6 +281,8 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
                     const bg = day.isInMonth
                       ? (day.count > 0 ? getCompletionColorForDay(day.count) : '#333')
                       : 'transparent';
+
+                    console.log(day, day.date.getDate())
                     return (
                       <TouchableOpacity
                         key={di}
