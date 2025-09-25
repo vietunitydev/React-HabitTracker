@@ -6,6 +6,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import CreateHabitScreen from './src/screens/CreateHabitScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import HabitDetailScreen from './src/screens/HabitDetailScreen';
+import ChooseIconImage from './src/screens/ChooseIconImage';
 
 const Stack = createStackNavigator();
 
@@ -36,6 +37,7 @@ const App = () => {
                 <Stack.Screen name="CreateHabit" component={CreateHabitScreen} />
                 <Stack.Screen name="Settings" component={SettingsScreen} />
                 <Stack.Screen name="HabitDetail" component={HabitDetailScreen} />
+                <Stack.Screen name="ChooseIconImage" component={ChooseIconImage} />
             </Stack.Navigator>
         </NavigationContainer>
     );

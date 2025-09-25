@@ -3,11 +3,11 @@ import {
     View,
     Text,
     TouchableOpacity,
-    SafeAreaView,
     StyleSheet,
     ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SettingsScreen = ({navigation}) => {
     const SettingItem = ({icon, title, subtitle, onPress, iconColor = '#007AFF'}) => (
@@ -42,7 +42,7 @@ const SettingsScreen = ({navigation}) => {
                             <Icon name="crown" size={24} color="#FFD700" />
                         </View>
                         <View style={styles.proText}>
-                            <Text style={styles.proTitle}>Subscribe to HabitKit Pro</Text>
+                            <Text style={styles.proTitle}>Subscribe to HabitTracker Pro</Text>
                             <Text style={styles.proSubtitle}>
                                 Unlimited habits, import/export data, ...
                             </Text>
