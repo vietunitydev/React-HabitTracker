@@ -53,7 +53,7 @@ const ProgressCircle = ({ progress, size = 28, strokeWidth = 2, color = '#34C759
 
 // HabitItem Component
 const HabitItem = memo(({ habit, navigation, onArchive }) => {
-    const [habitData, setHabitData] = useState(habit);
+    const { toggleHabitCompletion } = useContext(HabitContext);
     const [commitGrid, setCommitGrid] = useState([]);
     const scrollRef = useRef(null);
     const [isLongPressed, setIsLongPressed] = useState(false);
@@ -61,12 +61,12 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
     const [habitScale] = useState(new Animated.Value(1));
 
     const getCompletionCount = useCallback((date) => {
-        return habitData.completionCounts?.[date] || 0;
-    }, [habitData]);
+        return habit.completionCounts?.[date] || 0;
+    }, [habit]);
 
     const getCompletionColor = useCallback((completionCount) => {
-        const completionsPerDay = habitData.completionsPerDay || 1;
-        const baseColor = habitData.color || '#34C759';
+        const completionsPerDay = habit.completionsPerDay || 1;
+        const baseColor = habit.color || '#34C759';
 
         if (completionCount === 0) {
             return '#333';
@@ -84,7 +84,7 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
         const b = parseInt(hex.substr(4, 2), 16);
 
         return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-    }, [habitData]);
+    }, [habit]);
 
     const generateCommitGrid = useCallback((habit) => {
         const today = new Date();
@@ -140,51 +140,11 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
     }, [getCompletionCount]);
 
     useEffect(() => {
-        setCommitGrid(generateCommitGrid(habitData));
-        console.log(habitData);
-    }, [habitData, generateCommitGrid]);
+        setCommitGrid(generateCommitGrid(habit));
+    }, [habit, generateCommitGrid]);
 
-    const toggleHabitCompletion = async (date) => {
-        const completionsPerDay = habitData.completionsPerDay || 1;
-        const currentCount = getCompletionCount(date);
-        let newCount;
-
-        if (completionsPerDay === 1) {
-            newCount = currentCount >= 1 ? 0 : 1;
-        } else {
-            newCount = currentCount >= completionsPerDay ? 0 : currentCount + 1;
-        }
-
-        const updatedCompletionCounts = {
-            ...habitData.completionCounts,
-            [date]: newCount
-        };
-        const completions = [...(habitData.completions || [])];
-
-        if (newCount === 0) {
-            const dateIndex = completions.indexOf(date);
-            if (dateIndex > -1) {
-                completions.splice(dateIndex, 1);
-            }
-        } else if (newCount >= completionsPerDay && !completions.includes(date)) {
-            completions.push(date);
-        } else if (newCount < completionsPerDay && completions.includes(date)) {
-            const dateIndex = completions.indexOf(date);
-            completions.splice(dateIndex, 1);
-        }
-
-        const updatedHabit = {
-            ...habitData,
-            completionCounts: updatedCompletionCounts,
-            completions
-        };
-
-        setHabitData(updatedHabit);
-        await AsyncStorage.setItem('habits', JSON.stringify(
-          JSON.parse(await AsyncStorage.getItem('habits') || '[]').map(h =>
-            h.id === habitData.id ? updatedHabit : h
-          )
-        ));
+    const handleToggleHabitCompletion = (date) => {
+        toggleHabitCompletion(habit.id, date);
     };
 
     const handleLongPress = () => {
@@ -226,16 +186,15 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
     // };
 
     const handleArchiveHabit = () => {
-        onArchive(habitData.id);
+        onArchive(habit.id);
         handleLongPressEnd();
     };
 
     const todayStr = formatDateLocal(new Date());
-    const completionsPerDay = habitData.completionsPerDay || 1;
+    const completionsPerDay = habit.completionsPerDay || 1;
     const todayCompletionCount = getCompletionCount(todayStr);
     const todayCompleted = todayCompletionCount >= completionsPerDay;
     const progress = completionsPerDay > 1 ? todayCompletionCount / completionsPerDay : (todayCompleted ? 1 : 0);
-
     return (
       <Animated.View
         style={[
@@ -256,18 +215,18 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
           )}
           <TouchableOpacity
             style={styles.habitHeader}
-            onPress={() => !isLongPressed && navigation.navigate('HabitDetail', { habit: habitData })}
+            onPress={() => !isLongPressed && navigation.navigate('HabitDetail', { habit: habit })}
             onLongPress={handleLongPress}
             delayLongPress={500}
             activeOpacity={0.7}
           >
               <View style={styles.habitInfo}>
-                  <View style={[styles.habitIcon, { backgroundColor: habitData.color }]}>
-                      <Icon name={habitData.icon} size={20} color="#fff" />
+                  <View style={[styles.habitIcon, { backgroundColor: habit.color }]}>
+                      <Icon name={habit.icon} size={20} color="#fff" />
                   </View>
                   <View style={styles.habitText}>
-                      <Text style={styles.habitName}>{habitData.name}</Text>
-                      <Text style={styles.habitDescription}>{habitData.description}</Text>
+                      <Text style={styles.habitName}>{habit.name}</Text>
+                      <Text style={styles.habitDescription}>{habit.description}</Text>
                   </View>
               </View>
               <TouchableOpacity
@@ -275,7 +234,7 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
                 onPress={(e) => {
                     e.stopPropagation();
                     if (!isLongPressed) {
-                        toggleHabitCompletion(todayStr);
+                        handleToggleHabitCompletion(todayStr);
                     }
                 }}
               >
@@ -300,7 +259,7 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
                           <>
                               <ProgressCircle
                                 progress={progress}
-                                color={habitData.color || '#34C759'}
+                                color={habit.color || '#34C759'}
                               />
                               <View style={styles.progressText}>
                                   <Text style={styles.progressCount}>
@@ -385,7 +344,11 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
           )}
       </Animated.View>
     );
-}, (prevProps, nextProps) => prevProps.habit.id === nextProps.habit.id);
+}, (prevProps, nextProps) => {
+    return prevProps.habit.id === nextProps.habit.id &&
+      JSON.stringify(prevProps.habit.completionCounts) === JSON.stringify(nextProps.habit.completionCounts) &&
+      JSON.stringify(prevProps.habit.completions) === JSON.stringify(nextProps.habit.completions);
+});
 
 const HomeScreen = ({ navigation }) => {
     const { habits, archiveHabit } = useContext(HabitContext);

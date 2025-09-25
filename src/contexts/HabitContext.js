@@ -59,7 +59,6 @@ export const HabitProvider = ({ children }) => {
     setHabits((prevHabits) =>
       prevHabits.map((habit) => {
         if (habit.id !== habitId) return habit;
-
         const completionsPerDay = habit.completionsPerDay || 1;
         const currentCount = habit.completionCounts?.[date] || 0;
         let newCount;
