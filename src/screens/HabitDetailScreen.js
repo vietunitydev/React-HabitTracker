@@ -257,7 +257,8 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
         if (completionsPerDay === 1) return baseColor;
 
         const percentage = Math.min(completionCount / completionsPerDay, 1);
-        const opacity = 0.3 + (percentage * 0.7);
+        // const opacity = 0.3 + (percentage * 0.7);
+        const opacity = (percentage * 0.7);
         const hex = baseColor.replace('#', '');
         const r = parseInt(hex.substr(0, 2), 16);
         const g = parseInt(hex.substr(2, 2), 16);
@@ -313,7 +314,7 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
                                 styles.dayText,
                                 day.isToday && styles.todayText,
                                 disabled && styles.futureDayText,
-                                day.isInMonth && day.count > 0 && styles.completedDayText,
+                                day.isInMonth && day.count > 0,
                             ]}
                           >
                               {day.date.getDate()}
@@ -481,10 +482,10 @@ const styles = StyleSheet.create({
     monthTitle: { color: '#fff', fontSize: 14, fontWeight: '600' },
     weekDaysHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
     weekDayText: { color: '#666', fontSize: 12, fontWeight: '500', width: 32, textAlign: 'center' },
-    weekRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+    weekRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
     dayButton: {
-        width: 32,
-        height: 32,
+        width: 38,
+        height: 38,
         borderRadius: 6,
         backgroundColor: '#333',
         justifyContent: 'center',
@@ -493,9 +494,9 @@ const styles = StyleSheet.create({
     },
     todayButton: { borderWidth: 2, borderColor: '#007AFF' },
     futureDay: { backgroundColor: '#1a1a1a' },
-    dayText: { color: '#fff', fontSize: 12, fontWeight: '500' },
-    completedDayText: { color: '#fff', fontWeight: 'bold' },
-    todayText: { color: '#007AFF', fontWeight: 'bold' },
+    dayText: { color: '#fff', fontSize: 14, fontWeight: '400' },
+    completedDayText: { color: '#fff', fontWeight: '400' },
+    todayText: { color: '#fff', fontWeight: 'bold' },
     futureDayText: { color: '#444' },
     smallCountText: { fontSize: 7, color: '#ddd', textAlign: 'center' },
     smallCountTextEmpty: { fontSize: 9, color: 'transparent' },
