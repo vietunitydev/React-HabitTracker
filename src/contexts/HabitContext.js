@@ -37,11 +37,11 @@ export const HabitProvider = ({ children }) => {
         setHabits(parsedHabits);
 
         // Re-schedule notifications cho tất cả habits có notification enabled
-        parsedHabits.forEach(habit => {
-          if (habit.notification?.enabled) {
-            NotificationService.scheduleHabitReminder(habit);
-          }
-        });
+        // parsedHabits.forEach(habit => {
+        //   if (habit.notification?.enabled) {
+        //     NotificationService.scheduleHabitReminder(habit);
+        //   }
+        // });
       }
     } catch (error) {
       console.error('Error loading habits:', error);
@@ -168,12 +168,12 @@ export const HabitProvider = ({ children }) => {
           completions.push(date);
 
           // Show completion notification
-          const currentStreak = calculateCurrentStreak(completions, date);
-          NotificationService.showCompletionNotification(
-            habit.name,
-            currentStreak,
-            habit.color
-          );
+          // const currentStreak = calculateCurrentStreak(completions, date);
+          // NotificationService.showCompletionNotification(
+          //   habit.name,
+          //   currentStreak,
+          //   habit.color
+          // );
         } else if (newCount < completionsPerDay && completions.includes(date)) {
           const dateIndex = completions.indexOf(date);
           completions.splice(dateIndex, 1);

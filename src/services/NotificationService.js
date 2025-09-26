@@ -169,9 +169,8 @@ class NotificationService {
 
       const [hours, minutes] = habit.notification.time.split(':').map(Number);
 
-      // Tạo notification cho mỗi ngày
       const today = new Date();
-      for (let i = 0; i < 30; i++) { // Schedule cho 30 ngày tới
+      for (let i = 0; i < 30; i++) {
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + i);
         targetDate.setHours(hours, minutes, 0, 0);
@@ -181,7 +180,7 @@ class NotificationService {
           await notifee.createTriggerNotification(
             {
               id: `${habit.id}_day_${i}`,
-              title: `🎯 ${habit.name}`,
+              title: `${habit.name}`,
               body: habit.description || `Đã đến lúc thực hiện "${habit.name}"!`,
               data: {
                 habitId: habit.id,
@@ -215,13 +214,13 @@ class NotificationService {
                 color: habit.color || '#4CAF50',
                 actions: [
                   {
-                    title: '✅ Hoàn thành',
+                    title: 'Hoàn thành',
                     pressAction: {
                       id: 'complete',
                     },
                   },
                   {
-                    title: '⏰ Nhắc lại',
+                    title: 'Nhắc lại',
                     pressAction: {
                       id: 'snooze',
                     },
