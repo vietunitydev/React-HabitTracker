@@ -363,9 +363,9 @@ const HomeScreen = ({ navigation }) => {
                   >
                       <Icon name="cog" size={24} color="#fff" />
                   </TouchableOpacity>
-                  <Text style={styles.appTitle}>Habit Tracker</Text>
+                  <Text style={styles.appTitle}>HabitHub</Text>
               </View>
-
+              HabitHub
               <View style={styles.headerActions}>
                   <TouchableOpacity style={styles.proButton}>
                       <Text style={styles.proButtonText}>PRO</Text>

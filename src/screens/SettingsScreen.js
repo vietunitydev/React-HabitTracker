@@ -31,25 +31,25 @@ const SettingsScreen = ({navigation}) => {
                     onPress={() => navigation.goBack()}>
                     <Icon name="close" size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Settings</Text>
+                <Text style={styles.title}>Cài đặt</Text>
                 <View style={styles.headerSpacer} />
             </View>
 
             <ScrollView style={styles.content}>
-                <View style={styles.section}>
-                    <View style={styles.proSection}>
-                        <View style={styles.proIcon}>
-                            <Icon name="crown" size={24} color="#FFD700" />
-                        </View>
-                        <View style={styles.proText}>
-                            <Text style={styles.proTitle}>Subscribe to HabitTracker Pro</Text>
-                            <Text style={styles.proSubtitle}>
-                                Unlimited habits, import/export data, ...
-                            </Text>
-                        </View>
-                        <Icon name="chevron-right" size={24} color="#666" />
-                    </View>
-                </View>
+                {/*<View style={styles.section}>*/}
+                {/*    <View style={styles.proSection}>*/}
+                {/*        <View style={styles.proIcon}>*/}
+                {/*            <Icon name="crown" size={24} color="#FFD700" />*/}
+                {/*        </View>*/}
+                {/*        <View style={styles.proText}>*/}
+                {/*            <Text style={styles.proTitle}>Đăng ký HabitHub Pro</Text>*/}
+                {/*            <Text style={styles.proSubtitle}>*/}
+                {/*                Không giới hạn thói quen, thông báo, ...*/}
+                {/*            </Text>*/}
+                {/*        </View>*/}
+                {/*        <Icon name="chevron-right" size={24} color="#666" />*/}
+                {/*    </View>*/}
+                {/*</View>*/}
 
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>App</Text>
@@ -57,37 +57,31 @@ const SettingsScreen = ({navigation}) => {
 
                 <SettingItem
                     icon="cog"
-                    title="General"
+                    title="Cài đặt chung"
                     iconColor="#FF6B6B"
                 />
 
                 <SettingItem
                     icon="bell"
-                    title="Daily Check-In Reminders"
+                    title="Nhắc nhở hàng ngày"
                     iconColor="#4ECDC4"
                 />
 
                 <SettingItem
                     icon="palette"
-                    title="Theme"
+                    title="Chủ đề"
                     iconColor="#FFA726"
                 />
 
                 <SettingItem
                     icon="archive"
-                    title="Archived Habits"
+                    title="Lưu trữ"
                     iconColor="#66BB6A"
                 />
 
                 <SettingItem
-                    icon="database"
-                    title="Data Import/Export"
-                    iconColor="#42A5F5"
-                />
-
-                <SettingItem
                     icon="reorder-horizontal"
-                    title="Reorder Habits"
+                    title="Sắp xếp thói quen"
                     iconColor="#EF5350"
                 />
 
@@ -97,19 +91,13 @@ const SettingsScreen = ({navigation}) => {
 
                 <SettingItem
                     icon="help-circle"
-                    title="Show Onboarding"
+                    title="Hướng dẫn"
                     iconColor="#FF7043"
                 />
 
                 <SettingItem
-                    icon="information"
-                    title="Show What's New"
-                    iconColor="#5C6BC0"
-                />
-
-                <SettingItem
                     icon="message"
-                    title="Send feedback"
+                    title="Gửi phản hồi"
                     iconColor="#78909C"
                 />
 
@@ -124,14 +112,8 @@ const SettingsScreen = ({navigation}) => {
                 />
 
                 <SettingItem
-                    icon="twitter"
-                    title="Follow on X"
-                    iconColor="#1DA1F2"
-                />
-
-                <SettingItem
                     icon="shield-check"
-                    title="Privacy Policy"
+                    title="Chính sách bảo mật"
                     iconColor="#E91E63"
                 />
             </ScrollView>

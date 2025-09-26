@@ -58,6 +58,19 @@ const ChooseIconImage = ({navigation, route}) => {
     ]
   };
 
+  const vietnamese = {
+    General: "Chung",
+    Health: "Sức khỏe",
+    Fitness: "Thể chất",
+    Productivity: "Năng suất",
+    Learning: "Học tập",
+    Mindfulness: "Chánh niệm",
+    Social: "Xã hội",
+    Creativity: "Sáng tạo",
+    Finance: "Tài chính",
+    Career: "Công việc"
+  };
+
   const categories = Object.keys(iconCategories);
 
   const handleIconSelect = (icon) => {
@@ -84,7 +97,7 @@ const ChooseIconImage = ({navigation, route}) => {
           onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.title}>Choose Icon</Text>
+        <Text style={styles.title}>Chọn biểu tượng</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -102,7 +115,7 @@ const ChooseIconImage = ({navigation, route}) => {
                 styles.categoryTabText,
                 selectedCategory === category && styles.selectedCategoryTabText,
               ]}>
-                {category}
+                {vietnamese[category]}
               </Text>
             </TouchableOpacity>
           ))}
