@@ -21,7 +21,7 @@ const formatDateLocal = (date) => {
     return `${year}-${month}-${day}`;
 };
 
-const ProgressCircle = ({ progress, size = 28, strokeWidth = 2, color = '#34C759' }) => {
+const ProgressCircle = ({ progress, size = 40, strokeWidth = 4, color = '#34C759' }) => {
     return (
       <View style={[styles.progressCircle, { width: size, height: size }]}>
           <Animated.View style={styles.progressBackground}>
@@ -222,7 +222,7 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
           >
               <View style={styles.habitInfo}>
                   <View style={[styles.habitIcon, { backgroundColor: habit.color }]}>
-                      <Icon name={habit.icon} size={20} color="#fff" />
+                      <Icon name={habit.icon} size={24} color="#fff" />
                   </View>
                   <View style={styles.habitText}>
                       <Text style={styles.habitName}>{habit.name}</Text>
@@ -245,7 +245,7 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
                     ]}>
                         <Icon
                           name="check"
-                          size={16}
+                          size={20}
                           color={todayCompleted ? '#fff' : '#666'}
                         />
                     </View>
@@ -371,10 +371,10 @@ const HomeScreen = ({ navigation }) => {
                       <Text style={styles.proButtonText}>PRO</Text>
                   </TouchableOpacity>
                   <TouchableOpacity>
-                      <Icon name="chart-line" size={20} color="#fff" />
+                      <Icon name="chart-line" size={24} color="#fff" />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => navigation.navigate('CreateHabit')}>
-                      <Icon name="plus-circle" size={24} color="#fff" />
+                      <Icon name="plus-circle" size={28} color="#fff" />
                   </TouchableOpacity>
               </View>
           </View>
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 16,
+        // marginBottom: 16,
     },
     habitInfo: {
         flexDirection: 'row',
@@ -474,8 +474,8 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     habitIcon: {
-        width: 32,
-        height: 32,
+        width: 40,
+        height: 40,
         borderRadius: 6,
         justifyContent: 'center',
         alignItems: 'center',
@@ -499,8 +499,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     checkButton: {
-        width: 28,
-        height: 28,
+        width: 40,
+        height: 40,
         borderRadius: 5,
         backgroundColor: '#333',
         justifyContent: 'center',
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
     },
     progressCount: {
         color: '#fff',
-        fontSize: 10,
+        fontSize: 13,
         fontWeight: 'bold',
         textAlign: 'center',
     },
@@ -568,8 +568,8 @@ const styles = StyleSheet.create({
         marginBottom: 2,
     },
     commitDay: {
-        width: 6,
-        height: 6,
+        width: 7,
+        height: 7,
         backgroundColor: '#333',
         borderRadius: 1,
         marginRight: 2,
