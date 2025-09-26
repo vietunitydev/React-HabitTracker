@@ -370,6 +370,9 @@ const HomeScreen = ({ navigation }) => {
                   <TouchableOpacity style={styles.proButton}>
                       <Text style={styles.proButtonText}>PRO</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity onPress={() => navigation.navigate('TestNotification')}>
+                      <Icon name="bell-ring" size={24} color="#fff" />
+                  </TouchableOpacity>
                   <TouchableOpacity>
                       <Icon name="chart-line" size={24} color="#fff" />
                   </TouchableOpacity>
