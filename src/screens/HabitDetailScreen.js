@@ -31,10 +31,10 @@ const StreakBar = memo(({ currentStreak, goalStreak, onEdit, onSettings }) => (
   <View style={styles.streakBar}>
       <View style={styles.streakLeft}>
           <View style={styles.targetBlock}>
-              <Text style={styles.targetLabel}>Target</Text>
-              <Text style={styles.targetValue}>{goalStreak || '-'}</Text>
+              <Icon name="target" size={20} color="#FF6B6B" />
+              <Text style={styles.flameCount}>{goalStreak || '-'}</Text>
           </View>
-          <View style={styles.flameBlock}>
+          <View style={styles.targetBlock}>
               <Icon name="fire" size={20} color="#FF6B6B" />
               <Text style={styles.flameCount}>{currentStreak}</Text>
           </View>
@@ -394,7 +394,7 @@ const HabitDetailScreen = ({ navigation, route }) => {
               <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                   <Icon name="arrow-left" size={24} color="#fff" />
               </TouchableOpacity>
-              <Text style={styles.title}>Habit Details</Text>
+              <Text style={styles.title}>Chi tiết</Text>
               <View style={{ width: 36 }} />
           </View>
           <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -409,17 +409,17 @@ const HabitDetailScreen = ({ navigation, route }) => {
                 completionsPerDay={habitInfo.completionsPerDay || 1}
                 color={habitInfo.color}
               />
-              <StreakBar
-                currentStreak={currentStreak}
-                goalStreak={habitInfo.goalStreak}
-                onEdit={() => setShowDialog(true)}
-                onSettings={() => setShowDialog(true)}
-              />
               <MonthCalendar
                 completionCounts={habitInfo.completionCounts || {}}
                 completionsPerDay={habitInfo.completionsPerDay || 1}
                 color={habitInfo.color}
                 onToggleDate={toggleDate}
+              />
+              <StreakBar
+                currentStreak={currentStreak}
+                goalStreak={habitInfo.goalStreak}
+                onEdit={() => setShowDialog(true)}
+                onSettings={() => setShowDialog(true)}
               />
           </ScrollView>
           <ComingSoonDialog visible={showDialog} onClose={() => setShowDialog(false)} />
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
     habitInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#2a2a2a',
+        // backgroundColor: '#2a2a2a',
         padding: 8,
         borderRadius: 12,
     },
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     streakLeft: { flexDirection: 'row', alignItems: 'center' },
-    targetBlock: { marginRight: 12, alignItems: 'flex-start' },
+    targetBlock: { marginRight: 12, alignItems: 'flex-start', flexDirection: 'row', },
     targetLabel: { color: '#999', fontSize: 11 },
     targetValue: { color: '#fff', fontWeight: '700', fontSize: 14 },
     flakeBlock: { flexDirection: 'row', alignItems: 'center', paddingLeft: 6 },

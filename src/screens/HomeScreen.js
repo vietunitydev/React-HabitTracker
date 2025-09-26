@@ -241,7 +241,7 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
                   {completionsPerDay === 1 ? (
                     <View style={[
                         styles.checkButton,
-                        todayCompleted && styles.checkButtonCompleted,
+                        todayCompleted && {backgroundColor: habit.color},
                     ]}>
                         <Icon
                           name="check"
@@ -252,7 +252,7 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
                   ) : (
                     <View style={styles.progressContainer}>
                         {progress >= 1 ? (
-                          <View style={[styles.checkButton, styles.checkButtonCompleted]}>
+                          <View style={[styles.checkButton, {backgroundColor: habit.color}]}>
                               <Icon name="check" size={16} color="#fff" />
                           </View>
                         ) : (
@@ -367,15 +367,15 @@ const HomeScreen = ({ navigation }) => {
               </View>
               HabitHub
               <View style={styles.headerActions}>
-                  <TouchableOpacity style={styles.proButton}>
-                      <Text style={styles.proButtonText}>PRO</Text>
-                  </TouchableOpacity>
+                  {/*<TouchableOpacity style={styles.proButton}>*/}
+                  {/*    <Text style={styles.proButtonText}>PRO</Text>*/}
+                  {/*</TouchableOpacity>*/}
                   <TouchableOpacity onPress={() => navigation.navigate('TestNotification')}>
                       <Icon name="bell-ring" size={24} color="#fff" />
                   </TouchableOpacity>
-                  <TouchableOpacity>
-                      <Icon name="chart-line" size={24} color="#fff" />
-                  </TouchableOpacity>
+                  {/*<TouchableOpacity>*/}
+                  {/*    <Icon name="chart-line" size={24} color="#fff" />*/}
+                  {/*</TouchableOpacity>*/}
                   <TouchableOpacity onPress={() => navigation.navigate('CreateHabit')}>
                       <Icon name="plus-circle" size={28} color="#fff" />
                   </TouchableOpacity>
