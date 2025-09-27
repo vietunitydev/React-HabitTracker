@@ -14,8 +14,8 @@ import ComingSoonDialog from '../components/ComingSoonDialog';
 
 // Circular Timer Component
 const CircularTimer = memo(({ timeCompletion, onStart, isRunning, remainingTime }) => {
-    const size = 40;
-    const strokeWidth = 4;
+    const size = 60;
+    const strokeWidth = 6;
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
 
@@ -33,6 +33,7 @@ const CircularTimer = memo(({ timeCompletion, onStart, isRunning, remainingTime 
       <View style={styles.timerContainer}>
           <View style={styles.circularTimer}>
               <Svg width={size} height={size}>
+                  {/* Background circle */}
                   <Circle
                     cx={size / 2}
                     cy={size / 2}
@@ -65,129 +66,115 @@ const CircularTimer = memo(({ timeCompletion, onStart, isRunning, remainingTime 
     );
 });
 
-// Parse time string (HH:MM:SS) to seconds
+// Parse time string to seconds
 const parseTimeToSeconds = (timeString) => {
     if (!timeString) return 0;
     const parts = timeString.split(':');
-    if (parts.length !== 3) return 0;
-    const hours = parseInt(parts[0]) || 0;
-    const minutes = parseInt(parts[1]) || 0;
-    const seconds = parseInt(parts[2]) || 0;
-    return hours * 3600 + minutes * 60 + seconds;
+    if (parts.length === 3) {
+        const hours = parseInt(parts[0]) || 0;
+        const minutes = parseInt(parts[1]) || 0;
+        const seconds = parseInt(parts[2]) || 0;
+        return hours * 3600 + minutes * 60 + seconds;
+    }
+    return 0;
 };
 
 // Timer Section Component
-const TimerSection = memo(({ completionTime }) => {
-    const timeInSeconds = completionTime?.enabled ? parseTimeToSeconds(completionTime.time) : 0;
-    const [isRunning, setIsRunning] = useState(false);
-    const [remainingTime, setRemainingTime] = useState(timeInSeconds);
-    const intervalRef = useRef(null);
+const TimerSection = memo(({ habitId, completionTime }) => {
+    const { getTimerState, startTimer, pauseTimer, resumeTimer, resetTimer, completeEarly } = useContext(HabitContext);
+    const timerState = getTimerState(habitId);
 
-    useEffect(() => {
-        setRemainingTime(timeInSeconds);
-    }, [timeInSeconds]);
-
-    useEffect(() => {
-        if (isRunning && remainingTime > 0) {
-            intervalRef.current = setInterval(() => {
-                setRemainingTime(prev => {
-                    if (prev <= 1) {
-                        setIsRunning(false);
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-        } else {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
-            }
-        }
-
-        return () => {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-            }
-        };
-    }, [isRunning, remainingTime]);
+    const totalSeconds = parseTimeToSeconds(completionTime?.time);
+    const isRunning = timerState?.isRunning || false;
+    const remainingTime = timerState?.remainingTime || totalSeconds;
 
     const handleStart = () => {
-        if (!isRunning && remainingTime > 0) {
-            setIsRunning(true);
-        } else if (isRunning) {
-            setIsRunning(false);
-        } else if (remainingTime === 0) {
-            setRemainingTime(timeInSeconds);
+        if (!timerState && totalSeconds > 0) {
+            startTimer(habitId);
+        } else if (timerState) {
+            if (isRunning) {
+                pauseTimer(habitId);
+            } else if (remainingTime > 0) {
+                resumeTimer(habitId);
+            } else {
+                resetTimer(habitId);
+            }
         }
+    };
+
+    const handleCompleteEarly = () => {
+        completeEarly(habitId);
     };
 
     const getButtonText = () => {
+        if (!timerState) return 'Start';
         if (remainingTime === 0) return 'Reset';
         if (isRunning) return 'Pause';
-        return 'Start';
+        return 'Resume';
     };
 
     const getButtonIcon = () => {
+        if (!timerState) return 'play';
         if (remainingTime === 0) return 'refresh';
         if (isRunning) return 'pause';
         return 'play';
     };
 
-    if (!completionTime?.enabled || timeInSeconds === 0) {
-        return (
-          <View style={styles.timerSection}>
-              <View style={styles.timerContainer}>
-                  <View style={styles.circularTimerDisabled}>
-                      <Icon name="clock-outline" size={24} color="#666" />
-                  </View>
-                  <View style={styles.timerTextContainer}>
-                      <Text style={styles.timerTextDisabled}>
-                          Chưa cài đặt hẹn giờ
-                      </Text>
-                  </View>
-              </View>
-              <TouchableOpacity style={styles.disabledButton} disabled>
-                  <Icon name="clock-plus-outline" size={20} color="#666" />
-                  <Text style={styles.disabledButtonText}>Cài đặt</Text>
-              </TouchableOpacity>
-          </View>
-        );
+    if (!completionTime?.enabled || totalSeconds === 0) {
+        return null;
     }
 
     return (
       <View style={styles.timerSection}>
           <CircularTimer
-            timeCompletion={timeInSeconds}
-            onStart={handleStart}
+            timeCompletion={totalSeconds}
             isRunning={isRunning}
             remainingTime={remainingTime}
           />
-          <TouchableOpacity style={styles.startButton} onPress={handleStart}>
-              <Icon name={getButtonIcon()} size={20} color="#fff" />
-              <Text style={styles.startButtonText}>{getButtonText()}</Text>
-          </TouchableOpacity>
+          <View style={styles.timerButtons}>
+              <TouchableOpacity style={styles.startButton} onPress={handleStart}>
+                  <Icon name={getButtonIcon()} size={20} color="#fff" />
+                  <Text style={styles.startButtonText}>{getButtonText()}</Text>
+              </TouchableOpacity>
+              {timerState && remainingTime > 0 && isRunning && (
+                <TouchableOpacity style={styles.completeEarlyButton} onPress={handleCompleteEarly}>
+                    <Icon name="check" size={20} color="#fff" />
+                    <Text style={styles.completeEarlyButtonText}>Complete</Text>
+                </TouchableOpacity>
+              )}
+          </View>
       </View>
     );
 });
 
 // Notification Section Component
-const NotificationSection = memo(({ notification }) => {
+const NotificationSection = memo(({ notification, completionTime }) => {
+    const hasNotification = notification?.enabled && notification?.time;
+    const hasTimer = completionTime?.enabled && completionTime?.time;
+
+    if (!hasNotification && !hasTimer) {
+        return null;
+    }
+
     return (
       <View style={styles.notificationSection}>
-          <View style={styles.notificationContainer}>
-              <Icon
-                name={notification?.enabled ? "bell" : "bell-off-outline"}
-                size={20}
-                color={notification?.enabled ? "#34C759" : "#666"}
-              />
-              <Text style={styles.notificationLabel}>Thông báo:</Text>
-              <Text style={[
-                  styles.notificationTime,
-                  !notification?.enabled && styles.notificationDisabled
-              ]}>
-                  {notification?.enabled ? notification.time : 'Chưa cài đặt thông báo'}
-              </Text>
+          <View style={styles.notificationLeft}>
+              <Icon name="bell-outline" size={20} color="#FFA500" />
+              <View style={styles.notificationTextContainer}>
+                  <Text style={styles.notificationLabel}>Thông báo</Text>
+                  <Text style={styles.notificationValue}>
+                      {hasNotification ? notification.time : 'Chưa cài đặt thông báo'}
+                  </Text>
+              </View>
+          </View>
+          <View style={styles.notificationRight}>
+              <Icon name="timer-outline" size={20} color="#4CAF50" />
+              <View style={styles.notificationTextContainer}>
+                  <Text style={styles.notificationLabel}>Hẹn giờ</Text>
+                  <Text style={styles.notificationValue}>
+                      {hasTimer ? completionTime.time : 'Chưa cài đặt hẹn giờ'}
+                  </Text>
+              </View>
           </View>
       </View>
     );
@@ -212,10 +199,10 @@ const HabitInfo = memo(({ name, icon, color, description }) => (
 const StreakBar = memo(({ currentStreak, goalStreak, onEdit, onSettings }) => (
   <View style={styles.streakBar}>
       <View style={styles.streakLeft}>
-          {/*<View style={styles.targetBlock}>*/}
-          {/*    <Icon name="target" size={20} color="#FF6B6B" />*/}
-          {/*    <Text style={styles.flameCount}>{goalStreak || '-'}</Text>*/}
-          {/*</View>*/}
+          <View style={styles.targetBlock}>
+              <Icon name="target" size={20} color="#FF6B6B" />
+              <Text style={styles.flameCount}>{goalStreak || '-'}</Text>
+          </View>
           <View style={styles.targetBlock}>
               <Icon name="fire" size={20} color="#FF6B6B" />
               <Text style={styles.flameCount}>{currentStreak}</Text>
@@ -604,8 +591,14 @@ const HabitDetailScreen = ({ navigation, route }) => {
                 onEdit={() => setShowDialog(true)}
                 onSettings={() => setShowDialog(true)}
               />
-              <NotificationSection notification={habitInfo.notification} />
-              <TimerSection completionTime={habitInfo.completionTime} />
+              <NotificationSection
+                notification={habitInfo.notification}
+                completionTime={habitInfo.completionTime}
+              />
+              <TimerSection
+                habitId={habitInfo.id}
+                completionTime={habitInfo.completionTime}
+              />
           </ScrollView>
           <ComingSoonDialog visible={showDialog} onClose={() => setShowDialog(false)} />
       </SafeAreaView>
@@ -686,12 +679,12 @@ const styles = StyleSheet.create({
     smallCountTextEmpty: { fontSize: 9, color: 'transparent' },
     // Timer styles
     timerSection: {
-        height: 55,
         width: '100%',
         backgroundColor: '#2a2a2a',
         borderRadius: 10,
         marginTop: 12,
         paddingHorizontal: 16,
+        paddingVertical: 16,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -699,6 +692,7 @@ const styles = StyleSheet.create({
     timerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
     circularTimer: {
         position: 'relative',
@@ -714,80 +708,79 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         fontFamily: 'monospace',
     },
+    timerButtons: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     startButton: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FF6B6B',
-        paddingHorizontal: 16,
+        paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 8,
+        minWidth: 80,
+        justifyContent: 'center',
     },
     startButtonText: {
         color: '#fff',
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '600',
-        marginLeft: 6,
+        marginLeft: 4,
     },
-    // Timer disabled states
-    circularTimerDisabled: {
-        width: 45,
-        height: 45,
-        borderRadius: 30,
-        backgroundColor: '#333',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    timerTextDisabled: {
-        color: '#666',
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    disabledButton: {
+    completeEarlyButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#333',
-        paddingHorizontal: 16,
+        backgroundColor: '#4CAF50',
+        paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 8,
+        minWidth: 80,
+        justifyContent: 'center',
     },
-    disabledButtonText: {
-        color: '#666',
-        fontSize: 14,
+    completeEarlyButtonText: {
+        color: '#fff',
+        fontSize: 13,
         fontWeight: '600',
-        marginLeft: 6,
+        marginLeft: 4,
     },
-    // Notification section styles
+    // Notification styles
     notificationSection: {
-        height: 50,
         width: '100%',
         backgroundColor: '#2a2a2a',
         borderRadius: 10,
-        marginTop: 8,
+        marginTop: 12,
         paddingHorizontal: 16,
+        paddingVertical: 16,
         flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
+        justifyContent: 'space-between',
     },
-    notificationContainer: {
+    notificationLeft: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
+        marginRight: 12,
+    },
+    notificationRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    notificationTextContainer: {
+        marginLeft: 8,
+        flex: 1,
     },
     notificationLabel: {
-        color: '#fff',
-        fontSize: 14,
+        color: '#999',
+        fontSize: 11,
         fontWeight: '500',
-        marginLeft: 10,
-        marginRight: 8,
+        marginBottom: 2,
     },
-    notificationTime: {
-        color: '#34C759',
-        fontSize: 14,
+    notificationValue: {
+        color: '#fff',
+        fontSize: 13,
         fontWeight: '600',
-        fontFamily: 'monospace',
-    },
-    notificationDisabled: {
-        color: '#666',
-        fontFamily: 'system',
     },
 });
 
