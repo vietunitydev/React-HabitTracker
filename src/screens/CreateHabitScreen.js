@@ -25,7 +25,7 @@ const CreateHabitScreen = ({ navigation, route }) => {
     const [name, setName] = useState(route.params?.habit?.name || '');
     const [description, setDescription] = useState(route.params?.habit?.description || '');
     const [selectedIcon, setSelectedIcon] = useState(route.params?.habit?.icon || 'pen');
-    const [selectedColor, setSelectedColor] = useState(route.params?.habit?.color || '#FF6B6B');
+    const [selectedColor, setSelectedColor] = useState(route.params?.habit?.color || '#54A0FF');
     const [goalStreak, setGoalStreak] = useState(
       route.params?.habit?.goalStreak?.toString() || '7'
     );

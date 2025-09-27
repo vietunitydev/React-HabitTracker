@@ -1,17 +1,17 @@
 export const HabitColor = [
-  '#FF6B6B', // đỏ hồng
+  '#54A0FF', // xanh dương
   '#4ECDC4', // xanh ngọc
   '#45B7D1', // xanh biển
   '#96CEB4', // xanh pastel
   '#FECA57', // vàng cam
   '#FF9FF3', // hồng pastel
-  '#54A0FF', // xanh dương
   '#5F27CD', // tím
   '#00D2D3', // xanh ngọc đậm
   '#FF9F43', // cam
   '#10AC84', // xanh lá
-  '#EE5A6F', // đỏ đậm
 
+  '#FF6B6B', // đỏ hồng
+  '#EE5A6F', // đỏ đậm
   '#F368E0', // tím hồng neon
   '#1DD1A1', // xanh ngọc sáng
   '#2E86DE', // xanh dương đậm
