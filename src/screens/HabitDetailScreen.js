@@ -153,9 +153,9 @@ const NotificationSection = memo(({ notification, completionTime }) => {
     const hasNotification = notification?.enabled && notification?.time;
     const hasTimer = completionTime?.enabled && completionTime?.time;
 
-    if (!hasNotification && !hasTimer) {
-        return null;
-    }
+    // if (!hasNotification && !hasTimer) {
+    //     return null;
+    // }
 
     return (
       <View style={styles.notificationSection}>
@@ -200,10 +200,10 @@ const HabitInfo = memo(({ name, icon, color, description }) => (
 const StreakBar = memo(({ currentStreak, goalStreak, onEdit, onSettings }) => (
   <View style={styles.streakBar}>
       <View style={styles.streakLeft}>
-          <View style={styles.targetBlock}>
-              <Icon name="target" size={20} color="#FF6B6B" />
-              <Text style={styles.flameCount}>{goalStreak || '-'}</Text>
-          </View>
+          {/*<View style={styles.targetBlock}>*/}
+          {/*    <Icon name="target" size={20} color="#FF6B6B" />*/}
+          {/*    <Text style={styles.flameCount}>{goalStreak || '-'}</Text>*/}
+          {/*</View>*/}
           <View style={styles.targetBlock}>
               <Icon name="fire" size={20} color="#FF6B6B" />
               <Text style={styles.flameCount}>{currentStreak}</Text>
