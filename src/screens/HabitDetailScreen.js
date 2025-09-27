@@ -5,6 +5,7 @@ import {
     TouchableOpacity,
     ScrollView,
     StyleSheet,
+    Animated,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -54,9 +55,6 @@ const CircularTimer = memo(({ timeCompletion, onStart, isRunning, remainingTime 
                     transform={`rotate(-90 ${size / 2} ${size / 2})`}
                   />
               </Svg>
-              {/*<View style={styles.clockIconContainer}>*/}
-              {/*    <Icon name="clock-outline" size={16} color="#666" />*/}
-              {/*</View>*/}
           </View>
           <View style={styles.timerTextContainer}>
               <Text style={styles.timerText}>
@@ -66,6 +64,7 @@ const CircularTimer = memo(({ timeCompletion, onStart, isRunning, remainingTime 
       </View>
     );
 });
+
 
 // Parse time string to seconds
 const parseTimeToSeconds = (timeString) => {
@@ -153,10 +152,6 @@ const NotificationSection = memo(({ notification, completionTime }) => {
     const hasNotification = notification?.enabled && notification?.time;
     const hasTimer = completionTime?.enabled && completionTime?.time;
 
-    // if (!hasNotification && !hasTimer) {
-    //     return null;
-    // }
-
     return (
       <View style={styles.notificationSection}>
           <View style={styles.notificationLeft}>
@@ -196,29 +191,119 @@ const HabitInfo = memo(({ name, icon, color, description }) => (
   </View>
 ));
 
-// Streak bar component
-const StreakBar = memo(({ currentStreak, goalStreak, onEdit, onSettings }) => (
-  <View style={styles.streakBar}>
-      <View style={styles.streakLeft}>
-          {/*<View style={styles.targetBlock}>*/}
-          {/*    <Icon name="target" size={20} color="#FF6B6B" />*/}
-          {/*    <Text style={styles.flameCount}>{goalStreak || '-'}</Text>*/}
-          {/*</View>*/}
-          <View style={styles.targetBlock}>
-              <Icon name="fire" size={20} color="#FF6B6B" />
-              <Text style={styles.flameCount}>{currentStreak}</Text>
+// Improved Streak Bar Component with Animation
+const StreakBar = memo(({ currentStreak, goalStreak, onEdit, onSettings, isTodayCompleted, onStreakAnimationComplete }) => {
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+    const bounceAnim = useRef(new Animated.Value(1)).current;
+    const [animatedStreak, setAnimatedStreak] = useState(currentStreak);
+    const [showFireworks, setShowFireworks] = useState(false);
+
+    // Animation when streak increases
+    useEffect(() => {
+        if (currentStreak > animatedStreak) {
+            // Fire animation sequence
+            setShowFireworks(true);
+
+            // Scale animation
+            Animated.sequence([
+                Animated.timing(scaleAnim, {
+                    toValue: 1.3,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(scaleAnim, {
+                    toValue: 1,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+
+            // Bounce animation for the number
+            Animated.sequence([
+                Animated.timing(bounceAnim, {
+                    toValue: 1.2,
+                    duration: 150,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(bounceAnim, {
+                    toValue: 1,
+                    friction: 3,
+                    tension: 100,
+                    useNativeDriver: true,
+                }),
+            ]).start(() => {
+                setAnimatedStreak(currentStreak);
+                onStreakAnimationComplete?.();
+                setTimeout(() => setShowFireworks(false), 1000);
+            });
+        } else {
+            setAnimatedStreak(currentStreak);
+        }
+    }, [currentStreak, animatedStreak, scaleAnim, bounceAnim, onStreakAnimationComplete]);
+
+    // Determine fire icon color
+    const getFireColor = () => {
+        if (!isTodayCompleted && currentStreak > 0) {
+            return '#666'; // Gray when today is not completed yet
+        }
+        return '#FF6B6B'; // Red when completed or no streak
+    };
+
+    const getFireIcon = () => {
+        if (!isTodayCompleted && currentStreak > 0) {
+            return 'fire-off'; // Unlit fire icon
+        }
+        return 'fire'; // Lit fire icon
+    };
+
+    return (
+      <View style={styles.streakBar}>
+          <View style={styles.streakLeft}>
+              <View style={styles.targetBlock}>
+                  <Animated.View
+                    style={[
+                        styles.fireIconContainer,
+                        {
+                            transform: [{ scale: scaleAnim }],
+                        }
+                    ]}
+                  >
+                      <Icon name={getFireIcon()} size={20} color={getFireColor()} />
+                      {showFireworks && (
+                        <View style={styles.fireworksContainer}>
+                            <Text style={styles.fireworks}>✨</Text>
+                            <Text style={styles.fireworks}>🎉</Text>
+                            <Text style={styles.fireworks}>⭐</Text>
+                        </View>
+                      )}
+                  </Animated.View>
+                  <Animated.Text
+                    style={[
+                        styles.flameCount,
+                        {
+                            transform: [{ scale: bounceAnim }],
+                            color: getFireColor()
+                        }
+                    ]}
+                  >
+                      {animatedStreak}
+                  </Animated.Text>
+              </View>
+              {!isTodayCompleted && currentStreak > 0 && (
+                <Text style={styles.streakHint}>Điểm danh hôm nay để giữ streak!</Text>
+              )}
+          </View>
+          <View style={styles.streakRight}>
+              <TouchableOpacity style={styles.iconButton} onPress={onEdit}>
+                  <Icon name="pencil" size={20} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconButton} onPress={onSettings}>
+                  <Icon name="cog" size={20} color="#fff" />
+              </TouchableOpacity>
           </View>
       </View>
-      <View style={styles.streakRight}>
-          <TouchableOpacity style={styles.iconButton} onPress={onEdit}>
-              <Icon name="pencil" size={20} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={onSettings}>
-              <Icon name="cog" size={20} color="#fff" />
-          </TouchableOpacity>
-      </View>
-  </View>
-));
+    );
+});
 
 const formatDateLocal = (date) => {
     const d = new Date(date);
@@ -227,6 +312,73 @@ const formatDateLocal = (date) => {
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+};
+
+// Improved streak calculation function
+const calculateStreakData = (completions, completionsPerDay) => {
+    if (!completions || completions.length === 0) {
+        return {
+            currentStreak: 0,
+            longestStreak: 0,
+            isTodayCompleted: false
+        };
+    }
+
+    const today = formatDateLocal(new Date());
+    const completionCounts = completions.reduce((acc, dateStr) => {
+        acc[dateStr] = (acc[dateStr] || 0) + 1;
+        return acc;
+    }, {});
+
+    // Check if today is completed
+    const isTodayCompleted = (completionCounts[today] || 0) >= completionsPerDay;
+
+    // Calculate current streak
+    let currentStreak = 0;
+    let checkDate = new Date();
+
+    // If today is completed, start from today, otherwise start from yesterday
+    if (!isTodayCompleted) {
+        checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    while (true) {
+        const dateStr = formatDateLocal(checkDate);
+        const completionCount = completionCounts[dateStr] || 0;
+
+        if (completionCount >= completionsPerDay) {
+            currentStreak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+            break;
+        }
+    }
+
+    // Calculate longest streak
+    const sortedDates = Object.keys(completionCounts)
+      .filter(date => completionCounts[date] >= completionsPerDay)
+      .map(date => new Date(date))
+      .sort((a, b) => a - b);
+
+    let longestStreak = 0;
+    let currentLongestStreak = 1;
+
+    for (let i = 1; i < sortedDates.length; i++) {
+        const diffDays = (sortedDates[i] - sortedDates[i - 1]) / (1000 * 60 * 60 * 24);
+        if (diffDays === 1) {
+            currentLongestStreak++;
+        } else {
+            longestStreak = Math.max(longestStreak, currentLongestStreak);
+            currentLongestStreak = 1;
+        }
+    }
+    longestStreak = Math.max(longestStreak, currentLongestStreak);
+
+    return {
+        currentStreak,
+        longestStreak: sortedDates.length > 0 ? longestStreak : 0,
+        isTodayCompleted
+    };
 };
 
 // History grid component
@@ -361,17 +513,14 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
         return d;
     };
 
-
     const generateMonthCalendar = (monthDate) => {
         const todayNorm = normalizeDate(new Date());
         const start = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
         const end = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
 
-        // Bắt đầu từ chủ nhật của tuần chứa ngày 1
         const startOfWeek = new Date(start);
         startOfWeek.setDate(start.getDate() - start.getDay());
 
-        // Kết thúc ở thứ bảy của tuần chứa ngày cuối cùng
         const endOfWeek = new Date(end);
         endOfWeek.setDate(end.getDate() + (6 - end.getDay()));
 
@@ -423,7 +572,6 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
         if (completionsPerDay === 1) return baseColor;
 
         const percentage = Math.min(completionCount / completionsPerDay, 1);
-        // const opacity = 0.3 + (percentage * 0.7);
         const opacity = (percentage * 0.7);
         const hex = baseColor.replace('#', '');
         const r = parseInt(hex.substr(0, 2), 16);
@@ -506,54 +654,44 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
 const HabitDetailScreen = ({ navigation, route }) => {
     const { habits, updateHabit, toggleHabitCompletion, habitsLoaded } = useContext(HabitContext);
     const habitInfo = habits.find((h) => h.id === route.params.habit.id) || route.params.habit;
-    const [currentStreak, setCurrentStreak] = useState(0);
-    const [longestStreak, setLongestStreak] = useState(0);
+    const [streakData, setStreakData] = useState({ currentStreak: 0, longestStreak: 0, isTodayCompleted: false });
     const [totalCompletions, setTotalCompletions] = useState(0);
     const [showDialog, setShowDialog] = useState(false);
+    const [previousStreak, setPreviousStreak] = useState(0);
 
-    // Toggle date completion
+    // Toggle date completion with animation support
     const toggleDate = async (dateString) => {
+        const currentCompletions = habitInfo.completions || [];
+        const newStreakData = calculateStreakData(
+          [...currentCompletions, dateString], // Simulate adding completion
+          habitInfo.completionsPerDay || 1
+        );
+
+        // If this action will increase streak, store previous value for animation
+        if (newStreakData.currentStreak > streakData.currentStreak) {
+            setPreviousStreak(streakData.currentStreak);
+        }
+
         toggleHabitCompletion(habitInfo.id, dateString);
     };
 
     // Calculate stats
     useEffect(() => {
-        setTotalCompletions(habitInfo.completions?.length || 0);
+        const completionsArray = habitInfo.completions || [];
+        setTotalCompletions(completionsArray.length);
 
-        // Current streak
-        const todayDate = new Date();
-        let streak = 0;
-        let check = new Date(todayDate);
-        while (true) {
-            const d = formatDateLocal(check);
-            if (habitInfo.completions?.includes(d)) {
-                streak++;
-                check.setDate(check.getDate() - 1);
-            } else break;
-        }
-        setCurrentStreak(streak);
+        const newStreakData = calculateStreakData(
+          completionsArray,
+          habitInfo.completionsPerDay || 1
+        );
 
-        // Longest streak
-        if (!habitInfo.completions || habitInfo.completions.length === 0) {
-            setLongestStreak(0);
-            return;
-        }
-        const sorted = habitInfo.completions
-          .map((s) => new Date(s))
-          .sort((a, b) => a - b);
-        let maxStreak = 1,
-          cur = 1;
-        for (let i = 1; i < sorted.length; i++) {
-            const diffDays = (sorted[i] - sorted[i - 1]) / (1000 * 60 * 60 * 24);
-            if (diffDays === 1) cur++;
-            else {
-                if (cur > maxStreak) maxStreak = cur;
-                cur = 1;
-            }
-        }
-        maxStreak = Math.max(maxStreak, cur);
-        setLongestStreak(maxStreak);
-    }, [habitInfo.completions]);
+        setStreakData(newStreakData);
+    }, [habitInfo.completions, habitInfo.completionsPerDay]);
+
+    const handleStreakAnimationComplete = () => {
+        // Optional: Add any post-animation logic here
+        console.log('Streak animation completed!');
+    };
 
     if (!habitsLoaded) {
         return (
@@ -600,10 +738,12 @@ const HabitDetailScreen = ({ navigation, route }) => {
                 onToggleDate={toggleDate}
               />
               <StreakBar
-                currentStreak={currentStreak}
+                currentStreak={streakData.currentStreak}
                 goalStreak={habitInfo.goalStreak}
+                isTodayCompleted={streakData.isTodayCompleted}
                 onEdit={() => setShowDialog(true)}
                 onSettings={() => setShowDialog(true)}
+                onStreakAnimationComplete={handleStreakAnimationComplete}
               />
               <NotificationSection
                 notification={habitInfo.notification}
@@ -634,7 +774,6 @@ const styles = StyleSheet.create({
     habitInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        // backgroundColor: '#2a2a2a',
         padding: 8,
         borderRadius: 12,
     },
@@ -650,7 +789,7 @@ const styles = StyleSheet.create({
     commitDay: { width: 7, height: 7, backgroundColor: '#333', borderRadius: 2, marginRight: 2 },
     commitDayOutside: { backgroundColor: 'transparent' },
     streakBar: {
-        height: 50,
+        height: 60,
         width: '100%',
         backgroundColor: '#2a2a2a',
         borderRadius: 10,
@@ -660,12 +799,48 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    streakLeft: { flexDirection: 'row', alignItems: 'center' },
-    targetBlock: { marginRight: 12, alignItems: 'flex-start', flexDirection: 'row', },
+    streakLeft: {
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        flex: 1,
+    },
+    targetBlock: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    fireIconContainer: {
+        position: 'relative',
+        marginRight: 8,
+    },
+    fireworksContainer: {
+        position: 'absolute',
+        top: -10,
+        left: -15,
+        right: -15,
+        bottom: -10,
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        pointerEvents: 'none',
+    },
+    fireworks: {
+        fontSize: 12,
+        position: 'absolute',
+    },
+    flameCount: {
+        color: '#FF6B6B',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    streakHint: {
+        color: '#999',
+        fontSize: 11,
+        fontStyle: 'italic',
+        marginTop: 2,
+    },
     targetLabel: { color: '#999', fontSize: 11 },
     targetValue: { color: '#fff', fontWeight: '700', fontSize: 14 },
-    flakeBlock: { flexDirection: 'row', alignItems: 'center', paddingLeft: 6 },
-    flameCount: { color: '#fff', fontSize: 14, fontWeight: '700', marginLeft: 6 },
     streakRight: { flexDirection: 'row', alignItems: 'center' },
     iconButton: { padding: 8, marginLeft: 8 },
     monthNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
