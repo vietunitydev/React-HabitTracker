@@ -80,26 +80,55 @@ const parseTimeToSeconds = (timeString) => {
 };
 
 // Timer Section Component
-const TimerSection = memo(({ habitId, completionTime }) => {
-    const { getTimerState, startTimer, pauseTimer, resumeTimer, resetTimer, completeEarly } = useContext(HabitContext);
-    const timerState = getTimerState(habitId);
+const TimerSection = memo(({ habitId, completionTime, habitData }) => {
+    const { getTimerState, startTimer, pauseTimer, resumeTimer, resetTimer, completeEarly, toggleHabitCompletion } = useContext(HabitContext);
+    const [completionsToday, setCompletionsToday] = useState(0);
 
+    const timerState = getTimerState(habitId);
+    const isTimerEnabled = completionTime?.enabled;
     const totalSeconds = parseTimeToSeconds(completionTime?.time);
     const isRunning = timerState?.isRunning || false;
     const remainingTime = timerState?.remainingTime || totalSeconds;
 
+    // Get today's completions count
+    const getTodayCompletions = () => {
+        const today = formatDateLocal(new Date());
+        const completionCounts = habitData?.completionCounts || {};
+        return completionCounts[today] || 0;
+    };
+
+    useEffect(() => {
+        setCompletionsToday(getTodayCompletions());
+    }, [habitData?.completionCounts]);
+
+    const completionsPerDay = habitData?.completionsPerDay || 1;
+    const isFullyCompleted = completionsToday >= completionsPerDay;
+
     const handleStart = () => {
-        if (!timerState && totalSeconds > 0) {
-            startTimer(habitId);
-        } else if (timerState) {
-            if (isRunning) {
-                pauseTimer(habitId);
-            } else if (remainingTime > 0) {
-                resumeTimer(habitId);
-            } else {
-                resetTimer(habitId);
+        if (isFullyCompleted) return;
+
+        if (isTimerEnabled && totalSeconds > 0) {
+            // Timer logic
+            if (!timerState) {
+                startTimer(habitId);
+            } else if (timerState) {
+                if (isRunning) {
+                    pauseTimer(habitId);
+                } else if (remainingTime > 0) {
+                    resumeTimer(habitId);
+                } else {
+                    resetTimer(habitId);
+                }
             }
+        } else {
+            // Check-in logic when timer is disabled
+            handleCheckIn();
         }
+    };
+
+    const handleCheckIn = () => {
+        const today = formatDateLocal(new Date());
+        toggleHabitCompletion(habitId, today);
     };
 
     const handleCompleteEarly = () => {
@@ -107,39 +136,77 @@ const TimerSection = memo(({ habitId, completionTime }) => {
     };
 
     const getButtonText = () => {
-        if (!timerState) return 'Start';
-        if (remainingTime === 0) return 'Reset';
-        if (isRunning) return 'Pause';
-        return 'Resume';
+        if (isFullyCompleted) {
+            if (completionsPerDay === 1) {
+                return 'Đã hoàn thành';
+            } else {
+                return `Đã hoàn thành (${completionsToday}/${completionsPerDay})`;
+            }
+        }
+
+        if (!isTimerEnabled) return 'Bắt đầu';
+
+        if (!timerState) return 'Bắt đầu';
+        if (remainingTime === 0) return 'Đặt lại';
+        if (isRunning) return 'Tạm dừng';
+        return 'Tiếp tục';
     };
 
     const getButtonIcon = () => {
+        if (isFullyCompleted) return 'check-circle';
+
+        if (!isTimerEnabled) return 'calendar-check';
+
         if (!timerState) return 'play';
         if (remainingTime === 0) return 'refresh';
         if (isRunning) return 'pause';
         return 'play';
     };
 
-    if (!completionTime?.enabled || totalSeconds === 0) {
-        return null;
-    }
+    const getButtonStyle = () => {
+        if (isFullyCompleted) return [styles.startButton, styles.disabledButton];
+
+        if (!isTimerEnabled) return [styles.startButton, styles.checkInButton];
+
+        return styles.startButton;
+    };
+
+    const displayTime = isTimerEnabled ? remainingTime : 0;
 
     return (
-      <View style={styles.timerSection}>
-          <CircularTimer
-            timeCompletion={totalSeconds}
-            isRunning={isRunning}
-            remainingTime={remainingTime}
-          />
+      <View style={[styles.timerSection, isFullyCompleted && styles.timerSectionDisabled]}>
+          <View style={styles.timerWrapper}>
+              <View style={[styles.circularTimerWrapper, isFullyCompleted && styles.circularTimerDisabled]}>
+                  <CircularTimer
+                    timeCompletion={totalSeconds}
+                    isRunning={isRunning}
+                    remainingTime={displayTime}
+                  />
+              </View>
+              {completionsPerDay > 1 && (
+                <View style={styles.progressContainer}>
+                    <Text style={[styles.progressText, isFullyCompleted && styles.progressTextCompleted]}>
+                        {completionsToday}/{completionsPerDay} lần hôm nay
+                    </Text>
+                </View>
+              )}
+          </View>
           <View style={styles.timerButtons}>
-              <TouchableOpacity style={styles.startButton} onPress={handleStart}>
+              <TouchableOpacity
+                style={getButtonStyle()}
+                onPress={handleStart}
+                disabled={isFullyCompleted}
+                activeOpacity={isFullyCompleted ? 1 : 0.7}
+              >
                   <Icon name={getButtonIcon()} size={20} color="#fff" />
-                  <Text style={styles.startButtonText}>{getButtonText()}</Text>
+                  <Text style={[styles.startButtonText, isFullyCompleted && styles.startButtonTextDisabled]}>
+                      {getButtonText()}
+                  </Text>
               </TouchableOpacity>
-              {timerState && remainingTime > 0 && isRunning && (
+              {isTimerEnabled && timerState && remainingTime > 0 && isRunning && !isFullyCompleted && (
                 <TouchableOpacity style={styles.completeEarlyButton} onPress={handleCompleteEarly}>
                     <Icon name="check" size={20} color="#fff" />
-                    <Text style={styles.completeEarlyButtonText}>Complete</Text>
+                    <Text style={styles.completeEarlyButtonText}>Xong</Text>
                 </TouchableOpacity>
               )}
           </View>
@@ -752,6 +819,7 @@ const HabitDetailScreen = ({ navigation, route }) => {
               <TimerSection
                 habitId={habitInfo.id}
                 completionTime={habitInfo.completionTime}
+                habitData={habitInfo}
               />
           </ScrollView>
           <ComingSoonDialog visible={showDialog} onClose={() => setShowDialog(false)} />
@@ -878,10 +946,37 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
     },
+    timerSectionDisabled: {
+        opacity: 0.6,
+        // backgroundColor: '#1a1a1a',
+    },
+    timerWrapper: {
+        flexDirection: 'column',
+        alignItems: 'center',
+    },
+    circularTimerWrapper: {
+        opacity: 1,
+    },
+    circularTimerDisabled: {
+        opacity: 0.5,
+    },
+    progressContainer: {
+        marginTop: 8,
+    },
+    progressText: {
+        color: '#999',
+        fontSize: 12,
+        fontWeight: '500',
+        textAlign: 'center',
+    },
+    progressTextCompleted: {
+        color: '#4CAF50',
+        fontWeight: '600',
+    },
     timerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        flex: 1,
+        // flex: 1,
     },
     circularTimer: {
         position: 'relative',
@@ -905,10 +1000,12 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         fontFamily: 'monospace',
+        textAlign: 'center',
     },
     timerButtons: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: 8,
     },
     startButton: {
@@ -918,14 +1015,24 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 8,
-        minWidth: 80,
+        minWidth: 100,
         justifyContent: 'center',
+    },
+    checkInButton: {
+        backgroundColor: '#4CAF50',
+    },
+    disabledButton: {
+        backgroundColor: '#666',
+        opacity: 0.8,
     },
     startButtonText: {
         color: '#fff',
         fontSize: 13,
         fontWeight: '600',
         marginLeft: 4,
+    },
+    startButtonTextDisabled: {
+        color: '#ccc',
     },
     completeEarlyButton: {
         flexDirection: 'row',
