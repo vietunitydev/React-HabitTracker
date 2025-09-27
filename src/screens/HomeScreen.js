@@ -393,9 +393,9 @@ const HomeScreen = ({ navigation }) => {
               {habits.length === 0 && (
                 <View style={styles.emptyState}>
                     <Icon name="format-list-checks" size={48} color="#444" />
-                    <Text style={styles.emptyText}>No habits yet</Text>
+                    <Text style={styles.emptyText}>Chưa có thói quen</Text>
                     <Text style={styles.emptySubtext}>
-                        Tap the + button to create your first habit
+                        Click vào nút '+' để tạo thói quen đầu tiên
                     </Text>
                 </View>
               )}
