@@ -377,8 +377,6 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
         const weeks = [];
         let current = new Date(startOfWeek);
 
-        console.log(current.toString(), endOfWeek.toString());
-
         while (current <= endOfWeek) {
             const week = [];
             for (let d = 0; d < 7; d++) {
@@ -391,7 +389,6 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
 
                 week.push({
                     date: cd,
-                    datea: current.toString(),
                     dateString,
                     isInMonth,
                     isToday,
@@ -404,7 +401,6 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
             weeks.push(week);
         }
 
-        console.log(weeks);
         return weeks;
     };
 
@@ -507,7 +503,7 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
 });
 
 const HabitDetailScreen = ({ navigation, route }) => {
-    const { habits, updateHabit, toggleHabitCompletion } = useContext(HabitContext);
+    const { habits, updateHabit, toggleHabitCompletion, habitsLoaded } = useContext(HabitContext);
     const habitInfo = habits.find((h) => h.id === route.params.habit.id) || route.params.habit;
     const [currentStreak, setCurrentStreak] = useState(0);
     const [longestStreak, setLongestStreak] = useState(0);
@@ -557,6 +553,23 @@ const HabitDetailScreen = ({ navigation, route }) => {
         maxStreak = Math.max(maxStreak, cur);
         setLongestStreak(maxStreak);
     }, [habitInfo.completions]);
+
+    if (!habitsLoaded) {
+        return (
+          <SafeAreaView style={styles.container}>
+              <View style={styles.header}>
+                  <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                      <Icon name="arrow-left" size={24} color="#fff" />
+                  </TouchableOpacity>
+                  <Text style={styles.title}>Chi tiết</Text>
+                  <View style={{ width: 36 }} />
+              </View>
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                  <Text style={{ color: '#fff' }}>Đang tải...</Text>
+              </View>
+          </SafeAreaView>
+        );
+    }
 
     return (
       <SafeAreaView style={styles.container}>

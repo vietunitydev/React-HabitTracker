@@ -8,55 +8,67 @@ export const HabitContext = createContext();
 export const HabitProvider = ({ children }) => {
   const [habits, setHabits] = useState([]);
   const [timers, setTimers] = useState({});
+  const [habitsLoaded, setHabitsLoaded] = useState(false);
+  const [timersLoaded, setTimersLoaded] = useState(false);
   const appState = useRef(AppState.currentState);
   const timerIntervals = useRef({});
 
-  // Initialize NotificationService when app starts
+  // Initialize NotificationService
   useEffect(() => {
     NotificationService.setupNotificationHandlers();
-
-    // Set callback để xử lý khi user complete habit từ notification
     NotificationService.setHabitCompletedCallback((habitId) => {
       const today = formatDateLocal(new Date());
       toggleHabitCompletion(habitId, today);
     });
   }, []);
 
-  // Save timer states whenever timers change
+  const timersRef = useRef(timers);
+
   useEffect(() => {
-    saveTimerStates();
+    timersRef.current = timers;
   }, [timers]);
 
-  // Handle app state changes for timer persistence
+  // Save timer states whenever timers change (only after both habits and timers are loaded)
+  useEffect(() => {
+    if (habitsLoaded && timersLoaded) {
+      saveTimerStates();
+    }
+  }, [timers, habitsLoaded, timersLoaded]);
+
+  // Handle app state changes
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
       if (appState.current === 'active' && nextAppState.match(/inactive|background/)) {
-        // App is going to background - save timer states
-        saveTimerStates();
+        if (timersLoaded) {
+          saveTimerStates();
+        }
       } else if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        // App is coming to foreground - restore timer states
-        restoreTimerStates();
+        if (habitsLoaded > 0) {
+          restoreTimerStates();
+        }
       }
       appState.current = nextAppState;
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
+  }, [habitsLoaded, timersLoaded]);
+
+  // Load initial data on app start
+  useEffect(() => {
+    const initialize = async () => {
+      await loadHabits();
+    };
+    initialize();
   }, []);
 
-  // Load initial data and restore timers
+  // Restore timers after habits are loaded
   useEffect(() => {
-    loadHabits();
-  }, []);
-
-  // Restore timer states after habits are loaded
-  useEffect(() => {
-    if (habits.length > 0) {
+    if (habitsLoaded && habits.length >= 0) {
       restoreTimerStates();
     }
-  }, [habits]);
+  }, [habitsLoaded]);
 
-  // Format date to local string
   const formatDateLocal = (date) => {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
@@ -66,7 +78,6 @@ export const HabitProvider = ({ children }) => {
     return `${year}-${month}-${day}`;
   };
 
-  // Parse time string to seconds
   const parseTimeToSeconds = (timeString) => {
     if (!timeString) return 0;
     const parts = timeString.split(':');
@@ -83,16 +94,18 @@ export const HabitProvider = ({ children }) => {
   const saveTimerStates = async () => {
     try {
       const timerData = {};
-      Object.keys(timers).forEach(habitId => {
-        const timer = timers[habitId];
-        if (timer.isRunning) {
-          timerData[habitId] = {
-            ...timer,
-            lastSaveTime: Date.now()
-          };
-        }
+      const currentTimers = timersRef.current;
+
+      Object.keys(currentTimers).forEach(habitId => {
+        const timer = currentTimers[habitId];
+        timerData[habitId] = {
+          ...timer,
+          lastSaveTime: Date.now()
+        };
       });
+
       await AsyncStorage.setItem('timerStates', JSON.stringify(timerData));
+      // console.log('Timer states saved:', timerData);
     } catch (error) {
       console.error('Error saving timer states:', error);
     }
@@ -101,36 +114,74 @@ export const HabitProvider = ({ children }) => {
   // Restore timer states from AsyncStorage
   const restoreTimerStates = async () => {
     try {
+      console.log('Attempting to restore timer states...');
+      console.log('Current habits count:', habits.length);
+
       const timerData = await AsyncStorage.getItem('timerStates');
-      if (timerData) {
-        const parsedTimers = JSON.parse(timerData);
-        const currentTime = Date.now();
-        const restoredTimers = {};
-
-        Object.keys(parsedTimers).forEach(habitId => {
-          const savedTimer = parsedTimers[habitId];
-          if (savedTimer.isRunning && savedTimer.lastSaveTime) {
-            const elapsedSeconds = Math.floor((currentTime - savedTimer.lastSaveTime) / 1000);
-            const newRemainingTime = Math.max(0, savedTimer.remainingTime - elapsedSeconds);
-
-            if (newRemainingTime > 0) {
-              restoredTimers[habitId] = {
-                ...savedTimer,
-                remainingTime: newRemainingTime
-              };
-              // Restart the interval
-              startTimerInterval(habitId, newRemainingTime);
-            } else {
-              // Timer completed while app was in background
-              handleTimerComplete(habitId);
-            }
-          }
-        });
-
-        setTimers(restoredTimers);
+      if (!timerData) {
+        console.log('No timer data found in storage');
+        setTimersLoaded(true); // Mark as loaded even if no data
+        return;
       }
+
+      const parsedTimers = JSON.parse(timerData);
+      console.log('Parsed timer data:', parsedTimers);
+
+      const currentTime = Date.now();
+      const restoredTimers = {};
+
+      Object.keys(parsedTimers).forEach(habitId => {
+        const savedTimer = parsedTimers[habitId];
+        if (!savedTimer || !savedTimer.totalTime) {
+          console.log(`Skipping timer for habit ${habitId}: no saved timer or total time`);
+          return;
+        }
+
+        const habit = habits.find(h => h.id === habitId);
+        if (!habit) {
+          console.log(`Skipping timer for habit ${habitId}: habit not found`);
+          return;
+        }
+
+        const totalSeconds = parseTimeToSeconds(habit.completionTime?.time);
+        if (totalSeconds <= 0) {
+          console.log(`Skipping timer for habit ${habitId}: no valid completion time`);
+          return;
+        }
+
+        let newRemainingTime = savedTimer.remainingTime || totalSeconds;
+
+        // Calculate elapsed time if timer was running
+        if (savedTimer.isRunning && savedTimer.lastSaveTime) {
+          const elapsedSeconds = Math.floor((currentTime - savedTimer.lastSaveTime) / 1000);
+          newRemainingTime = Math.max(0, savedTimer.remainingTime - elapsedSeconds);
+          console.log(`Timer was running for habit ${habitId}. Elapsed: ${elapsedSeconds}s, Remaining: ${newRemainingTime}s`);
+        }
+
+        if (newRemainingTime > 0) {
+          restoredTimers[habitId] = {
+            totalTime: totalSeconds,
+            remainingTime: newRemainingTime,
+            isRunning: savedTimer.isRunning,
+            startTime: savedTimer.isRunning ? Date.now() : savedTimer.startTime
+          };
+
+          if (savedTimer.isRunning) {
+            console.log(`Starting timer interval for habit ${habitId}`);
+            startTimerInterval(habitId, newRemainingTime);
+          }
+        } else if (savedTimer.isRunning) {
+          console.log(`Timer completed for habit ${habitId} while app was closed`);
+          handleTimerComplete(habitId);
+        }
+      });
+
+      console.log('Restored timers:', restoredTimers);
+      setTimers(restoredTimers);
+      setTimersLoaded(true); // Mark timers as loaded after restoration
     } catch (error) {
       console.error('Error restoring timer states:', error);
+      setTimersLoaded(true); // Mark as loaded even on error to prevent hanging
     }
   };
 
@@ -158,7 +209,8 @@ export const HabitProvider = ({ children }) => {
             [habitId]: {
               ...timer,
               remainingTime: 0,
-              isRunning: false
+              isRunning: false,
+              startTime: null
             }
           };
         }
@@ -178,16 +230,13 @@ export const HabitProvider = ({ children }) => {
   const handleTimerComplete = (habitId) => {
     const today = formatDateLocal(new Date());
 
-    // Clear interval
     if (timerIntervals.current[habitId]) {
       clearInterval(timerIntervals.current[habitId]);
       delete timerIntervals.current[habitId];
     }
 
-    // Auto-complete habit
     toggleHabitCompletion(habitId, today);
 
-    // Show completion notification
     const habit = habits.find(h => h.id === habitId);
     if (habit) {
       NotificationService.showCompletionNotification(
@@ -197,27 +246,29 @@ export const HabitProvider = ({ children }) => {
       );
     }
 
-    // Remove timer from storage
-    AsyncStorage.removeItem('timerStates').catch(console.error);
+    setTimers(prev => {
+      const newTimers = { ...prev };
+      delete newTimers[habitId];
+      return newTimers;
+    });
   };
 
   // Load habits from AsyncStorage
   const loadHabits = useCallback(async () => {
     try {
+      console.log('Loading habits from storage...');
       const habitsData = await AsyncStorage.getItem('habits');
       if (habitsData) {
         const parsedHabits = JSON.parse(habitsData);
+        console.log('Loaded habits:', parsedHabits.length);
         setHabits(parsedHabits);
-
-        // Re-schedule notifications cho tất cả habits có notification enabled
-        // parsedHabits.forEach(habit => {
-        //   if (habit.notification?.enabled) {
-        //     NotificationService.scheduleHabitReminder(habit);
-        //   }
-        // });
+      } else {
+        console.log('No habits found in storage');
       }
+      setHabitsLoaded(true); // Mark habits as loaded
     } catch (error) {
       console.error('Error loading habits:', error);
+      setHabitsLoaded(true); // Still mark as loaded to prevent hanging
     }
   }, []);
 
@@ -230,17 +281,12 @@ export const HabitProvider = ({ children }) => {
     }
   }, []);
 
-  // Load habits on mount
-  // useEffect(() => {
-  //   loadHabits();
-  // }, [loadHabits]);
-
-  // Save habits to AsyncStorage whenever they change
+  // Save habits whenever they change
   useEffect(() => {
-    if (habits.length > 0) {
+    if (habits.length > 0 && habitsLoaded) {
       persistHabits(habits);
     }
-  }, [habits, persistHabits]);
+  }, [habits, persistHabits, habitsLoaded]);
 
   // Timer management functions
   const startTimer = useCallback((habitId) => {
@@ -289,19 +335,21 @@ export const HabitProvider = ({ children }) => {
       const timer = prev[habitId];
       if (!timer || timer.remainingTime <= 0) return prev;
 
-      const updatedTimer = {
-        ...timer,
-        isRunning: true
-      };
-
-      startTimerInterval(habitId, timer.remainingTime);
-
       return {
         ...prev,
-        [habitId]: updatedTimer
+        [habitId]: {
+          ...timer,
+          isRunning: true,
+          startTime: Date.now()
+        }
       };
     });
-  }, []);
+
+    const currentTimer = timers[habitId];
+    if (currentTimer?.remainingTime > 0) {
+      startTimerInterval(habitId, currentTimer.remainingTime);
+    }
+  }, [timers]);
 
   const resetTimer = useCallback((habitId) => {
     const habit = habits.find(h => h.id === habitId);
@@ -328,29 +376,25 @@ export const HabitProvider = ({ children }) => {
   const completeEarly = useCallback((habitId) => {
     const today = formatDateLocal(new Date());
 
-    // Stop timer
     if (timerIntervals.current[habitId]) {
       clearInterval(timerIntervals.current[habitId]);
       delete timerIntervals.current[habitId];
     }
 
-    // Remove timer state
     setTimers(prev => {
       const newTimers = { ...prev };
       delete newTimers[habitId];
       return newTimers;
     });
 
-    // Complete habit
     toggleHabitCompletion(habitId, today);
   }, []);
 
-  // Get timer state for a habit
   const getTimerState = useCallback((habitId) => {
     return timers[habitId] || null;
   }, [timers]);
 
-  // Calculate current streak for a habit
+  // Calculate current streak
   const calculateCurrentStreak = (completions, endDate) => {
     if (!completions || completions.length === 0) return 0;
 
@@ -404,10 +448,8 @@ export const HabitProvider = ({ children }) => {
         )
       );
 
-      // Cancel old notifications
       await NotificationService.cancelHabitNotifications(updatedHabit.id);
 
-      // Schedule new notification nếu enabled
       if (updatedHabit.notification?.enabled) {
         await NotificationService.scheduleHabitReminder(updatedHabit);
         console.log('Notification rescheduled for habit:', updatedHabit.name);
@@ -417,7 +459,7 @@ export const HabitProvider = ({ children }) => {
     }
   }, []);
 
-  // Toggle habit completion for a specific date
+  // Toggle habit completion
   const toggleHabitCompletion = useCallback((habitId, date) => {
     setHabits((prevHabits) =>
       prevHabits.map((habit) => {
@@ -446,14 +488,6 @@ export const HabitProvider = ({ children }) => {
           }
         } else if (newCount >= completionsPerDay && !completions.includes(date)) {
           completions.push(date);
-
-          // Show completion notification
-          // const currentStreak = calculateCurrentStreak(completions, date);
-          // NotificationService.showCompletionNotification(
-          //   habit.name,
-          //   currentStreak,
-          //   habit.color
-          // );
         } else if (newCount < completionsPerDay && completions.includes(date)) {
           const dateIndex = completions.indexOf(date);
           completions.splice(dateIndex, 1);
@@ -473,7 +507,6 @@ export const HabitProvider = ({ children }) => {
     try {
       setHabits((prevHabits) => prevHabits.filter((habit) => habit.id !== habitId));
 
-      // Clear timer if running
       if (timerIntervals.current[habitId]) {
         clearInterval(timerIntervals.current[habitId]);
         delete timerIntervals.current[habitId];
@@ -505,7 +538,6 @@ export const HabitProvider = ({ children }) => {
   const getTodayHabits = useCallback(() => {
     const today = formatDateLocal(new Date());
     return habits.filter(habit => {
-      // Lọc habits chưa complete hôm nay
       const todayCount = habit.completionCounts?.[today] || 0;
       const requiredCount = habit.completionsPerDay || 1;
       return todayCount < requiredCount;
@@ -540,6 +572,8 @@ export const HabitProvider = ({ children }) => {
       value={{
         habits,
         timers,
+        habitsLoaded,
+        timersLoaded,
         addHabit,
         updateHabit,
         toggleHabitCompletion,
@@ -548,7 +582,6 @@ export const HabitProvider = ({ children }) => {
         testScheduledNotification,
         getTodayHabits,
         getHabitCompletionStatus,
-        // Timer functions
         startTimer,
         pauseTimer,
         resumeTimer,
