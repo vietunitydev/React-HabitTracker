@@ -12,15 +12,13 @@ import Svg, { Circle } from 'react-native-svg';
 import { HabitContext } from '../contexts/HabitContext';
 import ComingSoonDialog from '../components/ComingSoonDialog';
 
-// Circular Timer Component
 const CircularTimer = memo(({ timeCompletion, onStart, isRunning, remainingTime }) => {
-    const size = 60;
-    const strokeWidth = 6;
+    const size = 50;
+    const strokeWidth = 5;
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
 
-    // Calculate progress (0 to 1)
-    const progress = timeCompletion > 0 ? (timeCompletion - remainingTime) / timeCompletion : 0;
+    const progress = timeCompletion > 0 ? remainingTime / timeCompletion : 0;
     const strokeDashoffset = circumference - (progress * circumference);
 
     const formatTime = (seconds) => {
@@ -56,6 +54,9 @@ const CircularTimer = memo(({ timeCompletion, onStart, isRunning, remainingTime 
                     transform={`rotate(-90 ${size / 2} ${size / 2})`}
                   />
               </Svg>
+              {/*<View style={styles.clockIconContainer}>*/}
+              {/*    <Icon name="clock-outline" size={16} color="#666" />*/}
+              {/*</View>*/}
           </View>
           <View style={styles.timerTextContainer}>
               <Text style={styles.timerText}>
@@ -709,6 +710,15 @@ const styles = StyleSheet.create({
     },
     circularTimer: {
         position: 'relative',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    clockIconContainer: {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        marginTop: -8,
+        marginLeft: -8,
         justifyContent: 'center',
         alignItems: 'center',
     },
