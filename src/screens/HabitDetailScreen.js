@@ -14,8 +14,8 @@ import ComingSoonDialog from '../components/ComingSoonDialog';
 
 // Circular Timer Component
 const CircularTimer = memo(({ timeCompletion, onStart, isRunning, remainingTime }) => {
-    const size = 60;
-    const strokeWidth = 6;
+    const size = 40;
+    const strokeWidth = 4;
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
 
@@ -33,7 +33,6 @@ const CircularTimer = memo(({ timeCompletion, onStart, isRunning, remainingTime 
       <View style={styles.timerContainer}>
           <View style={styles.circularTimer}>
               <Svg width={size} height={size}>
-                  {/* Background circle */}
                   <Circle
                     cx={size / 2}
                     cy={size / 2}
@@ -213,10 +212,10 @@ const HabitInfo = memo(({ name, icon, color, description }) => (
 const StreakBar = memo(({ currentStreak, goalStreak, onEdit, onSettings }) => (
   <View style={styles.streakBar}>
       <View style={styles.streakLeft}>
-          <View style={styles.targetBlock}>
-              <Icon name="target" size={20} color="#FF6B6B" />
-              <Text style={styles.flameCount}>{goalStreak || '-'}</Text>
-          </View>
+          {/*<View style={styles.targetBlock}>*/}
+          {/*    <Icon name="target" size={20} color="#FF6B6B" />*/}
+          {/*    <Text style={styles.flameCount}>{goalStreak || '-'}</Text>*/}
+          {/*</View>*/}
           <View style={styles.targetBlock}>
               <Icon name="fire" size={20} color="#FF6B6B" />
               <Text style={styles.flameCount}>{currentStreak}</Text>
@@ -687,7 +686,7 @@ const styles = StyleSheet.create({
     smallCountTextEmpty: { fontSize: 9, color: 'transparent' },
     // Timer styles
     timerSection: {
-        height: 70,
+        height: 55,
         width: '100%',
         backgroundColor: '#2a2a2a',
         borderRadius: 10,
@@ -731,8 +730,8 @@ const styles = StyleSheet.create({
     },
     // Timer disabled states
     circularTimerDisabled: {
-        width: 60,
-        height: 60,
+        width: 45,
+        height: 45,
         borderRadius: 30,
         backgroundColor: '#333',
         justifyContent: 'center',

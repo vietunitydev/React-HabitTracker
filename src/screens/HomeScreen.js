@@ -229,14 +229,14 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
                       <Text style={styles.habitDescription}>{habit.description}</Text>
                   </View>
               </View>
-              <TouchableOpacity
+              <View
                 style={styles.checkButtonContainer}
-                onPress={(e) => {
-                    e.stopPropagation();
-                    if (!isLongPressed) {
-                        handleToggleHabitCompletion(todayStr);
-                    }
-                }}
+                // onPress={(e) => {
+                //     e.stopPropagation();
+                //     if (!isLongPressed) {
+                //         handleToggleHabitCompletion(todayStr);
+                //     }
+                // }}
               >
                   {completionsPerDay === 1 ? (
                     <View style={[
@@ -270,7 +270,7 @@ const HabitItem = memo(({ habit, navigation, onArchive }) => {
                         )}
                     </View>
                   )}
-              </TouchableOpacity>
+              </View>
           </TouchableOpacity>
           <View style={styles.commitGridContainer}>
               <ScrollView
