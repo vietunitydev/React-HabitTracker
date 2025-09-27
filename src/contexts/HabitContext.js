@@ -22,6 +22,11 @@ export const HabitProvider = ({ children }) => {
     });
   }, []);
 
+  // Save timer states whenever timers change
+  useEffect(() => {
+    saveTimerStates();
+  }, [timers]);
+
   // Handle app state changes for timer persistence
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
@@ -39,11 +44,17 @@ export const HabitProvider = ({ children }) => {
     return () => subscription?.remove();
   }, []);
 
-  // Load initial data
+  // Load initial data and restore timers
   useEffect(() => {
     loadHabits();
-    restoreTimerStates();
   }, []);
+
+  // Restore timer states after habits are loaded
+  useEffect(() => {
+    if (habits.length > 0) {
+      restoreTimerStates();
+    }
+  }, [habits]);
 
   // Format date to local string
   const formatDateLocal = (date) => {
