@@ -1,17 +1,112 @@
 import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState } from 'react-native';
+import { AppState, useColorScheme } from 'react-native';
 import NotificationService from '../services/NotificationService';
 
 export const HabitContext = createContext();
 
 export const HabitProvider = ({ children }) => {
+  const systemColorScheme = useColorScheme();
   const [habits, setHabits] = useState([]);
   const [timers, setTimers] = useState({});
   const [habitsLoaded, setHabitsLoaded] = useState(false);
   const [timersLoaded, setTimersLoaded] = useState(false);
+
+  // Theme state: 'light', 'dark', or 'system'
+  const [themeMode, setThemeMode] = useState('system');
+  const [isDarkMode, setIsDarkMode] = useState(systemColorScheme === 'dark');
+
   const appState = useRef(AppState.currentState);
   const timerIntervals = useRef({});
+
+  // Load theme preference on mount
+  useEffect(() => {
+    const loadThemePreference = async () => {
+      try {
+        const savedTheme = await AsyncStorage.getItem('themeMode');
+        if (savedTheme) {
+          setThemeMode(savedTheme);
+          if (savedTheme === 'system') {
+            setIsDarkMode(systemColorScheme === 'dark');
+          } else {
+            setIsDarkMode(savedTheme === 'dark');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading theme preference:', error);
+      }
+    };
+    loadThemePreference();
+  }, []);
+
+  // Update theme when system theme changes (only if in system mode)
+  useEffect(() => {
+    if (themeMode === 'system') {
+      setIsDarkMode(systemColorScheme === 'dark');
+    }
+  }, [systemColorScheme, themeMode]);
+
+  // Toggle theme function
+  const toggleTheme = useCallback(async (mode) => {
+    try {
+      await AsyncStorage.setItem('themeMode', mode);
+      setThemeMode(mode);
+
+      if (mode === 'system') {
+        setIsDarkMode(systemColorScheme === 'dark');
+      } else {
+        setIsDarkMode(mode === 'dark');
+      }
+    } catch (error) {
+      console.error('Error saving theme preference:', error);
+    }
+  }, [systemColorScheme]);
+
+  // Theme colors based on style guide
+  const theme = {
+    // Backgrounds
+    background: isDarkMode
+      ? '#111827' // gray-900
+      : '#F9FAFB', // gray-50
+    backgroundSecondary: isDarkMode
+      ? 'rgba(31, 41, 55, 0.5)' // gray-800/50
+      : '#FFFFFF',
+    backgroundTertiary: isDarkMode
+      ? 'rgba(17, 24, 39, 0.3)' // gray-900/30
+      : '#F9FAFB',
+    card: isDarkMode
+      ? 'rgba(31, 41, 55, 0.5)' // gray-800/50
+      : '#FFFFFF',
+
+    // Text
+    text: isDarkMode ? '#FFFFFF' : '#111827', // white / gray-900
+    textSecondary: isDarkMode ? '#D1D5DB' : '#374151', // gray-300 / gray-700
+    textTertiary: isDarkMode ? '#9CA3AF' : '#4B5563', // gray-400 / gray-600
+    textMuted: isDarkMode ? '#6B7280' : '#6B7280', // gray-500
+
+    // Borders
+    border: isDarkMode
+      ? 'rgba(55, 65, 81, 0.5)' // gray-700/50
+      : '#E5E7EB', // gray-200
+    borderSecondary: isDarkMode
+      ? '#1F2937' // gray-800
+      : '#D1D5DB', // gray-300
+
+    // Accent colors
+    primary: '#8B5CF6', // purple-600
+    primaryLight: '#A78BFA', // purple-400
+    primaryDark: '#7C3AED', // purple-700
+    blue: isDarkMode ? '#60A5FA' : '#2563EB', // blue-400 / blue-600
+    cyan: isDarkMode ? '#22D3EE' : '#0891B2', // cyan-400 / cyan-600
+
+    // Status colors
+    success: '#10B981', // green-500
+    error: '#EF4444', // red-500
+    warning: '#F59E0B', // amber-500
+
+    // Special
+    isDark: isDarkMode,
+  };
 
   // Initialize NotificationService
   useEffect(() => {
@@ -105,7 +200,6 @@ export const HabitProvider = ({ children }) => {
       });
 
       await AsyncStorage.setItem('timerStates', JSON.stringify(timerData));
-      // console.log('Timer states saved:', timerData);
     } catch (error) {
       console.error('Error saving timer states:', error);
     }
@@ -120,7 +214,7 @@ export const HabitProvider = ({ children }) => {
       const timerData = await AsyncStorage.getItem('timerStates');
       if (!timerData) {
         console.log('No timer data found in storage');
-        setTimersLoaded(true); // Mark as loaded even if no data
+        setTimersLoaded(true);
         return;
       }
 
@@ -151,7 +245,6 @@ export const HabitProvider = ({ children }) => {
 
         let newRemainingTime = savedTimer.remainingTime || totalSeconds;
 
-        // Calculate elapsed time if timer was running
         if (savedTimer.isRunning && savedTimer.lastSaveTime) {
           const elapsedSeconds = Math.floor((currentTime - savedTimer.lastSaveTime) / 1000);
           newRemainingTime = Math.max(0, savedTimer.remainingTime - elapsedSeconds);
@@ -178,10 +271,10 @@ export const HabitProvider = ({ children }) => {
 
       console.log('Restored timers:', restoredTimers);
       setTimers(restoredTimers);
-      setTimersLoaded(true); // Mark timers as loaded after restoration
+      setTimersLoaded(true);
     } catch (error) {
       console.error('Error restoring timer states:', error);
-      setTimersLoaded(true); // Mark as loaded even on error to prevent hanging
+      setTimersLoaded(true);
     }
   };
 
@@ -265,36 +358,26 @@ export const HabitProvider = ({ children }) => {
       } else {
         console.log('No habits found in storage');
       }
-      setHabitsLoaded(true); // Mark habits as loaded
+      setHabitsLoaded(true);
     } catch (error) {
       console.error('Error loading habits:', error);
-      setHabitsLoaded(true); // Still mark as loaded to prevent hanging
+      setHabitsLoaded(true);
     }
   }, []);
 
-  // Persist habits to AsyncStorage
-  const persistHabits = useCallback(async (updatedHabits) => {
-    try {
-      await AsyncStorage.setItem('habits', JSON.stringify(updatedHabits));
-    } catch (error) {
-      console.error('Error persisting habits:', error);
-    }
-  }, []);
-
-  // Save habits whenever they change
+  // Save habits to AsyncStorage whenever they change
   useEffect(() => {
-    if (habits.length > 0 && habitsLoaded) {
-      persistHabits(habits);
+    if (habitsLoaded && habits.length >= 0) {
+      AsyncStorage.setItem('habits', JSON.stringify(habits));
     }
-  }, [habits, persistHabits, habitsLoaded]);
+  }, [habits, habitsLoaded]);
 
-  // Timer management functions
   const startTimer = useCallback((habitId) => {
     const habit = habits.find(h => h.id === habitId);
-    if (!habit?.completionTime?.enabled) return false;
+    if (!habit?.completionTime?.enabled) return;
 
     const totalSeconds = parseTimeToSeconds(habit.completionTime.time);
-    if (totalSeconds <= 0) return false;
+    if (totalSeconds <= 0) return;
 
     setTimers(prev => ({
       ...prev,
@@ -307,10 +390,14 @@ export const HabitProvider = ({ children }) => {
     }));
 
     startTimerInterval(habitId, totalSeconds);
-    return true;
   }, [habits]);
 
   const pauseTimer = useCallback((habitId) => {
+    if (timerIntervals.current[habitId]) {
+      clearInterval(timerIntervals.current[habitId]);
+      delete timerIntervals.current[habitId];
+    }
+
     setTimers(prev => {
       const timer = prev[habitId];
       if (!timer) return prev;
@@ -319,15 +406,11 @@ export const HabitProvider = ({ children }) => {
         ...prev,
         [habitId]: {
           ...timer,
-          isRunning: false
+          isRunning: false,
+          startTime: null
         }
       };
     });
-
-    if (timerIntervals.current[habitId]) {
-      clearInterval(timerIntervals.current[habitId]);
-      delete timerIntervals.current[habitId];
-    }
   }, []);
 
   const resumeTimer = useCallback((habitId) => {
@@ -588,6 +671,11 @@ export const HabitProvider = ({ children }) => {
         resetTimer,
         completeEarly,
         getTimerState,
+        // Theme properties
+        theme,
+        themeMode,
+        isDarkMode,
+        toggleTheme,
       }}
     >
       {children}

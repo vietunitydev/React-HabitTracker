@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useContext} from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,10 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { HabitContext } from '../contexts/HabitContext';
 
 const ChooseIconImage = ({navigation, route}) => {
+  const { theme } = useContext(HabitContext);
   const currentIcon = route.params?.currentIcon || 'pen';
   const [selectedIcon, setSelectedIcon] = useState(currentIcon);
   const [selectedCategory, setSelectedCategory] = useState('General');
@@ -82,38 +84,49 @@ const ChooseIconImage = ({navigation, route}) => {
     <TouchableOpacity
       style={[
         styles.iconItem,
-        selectedIcon === item && styles.selectedIconItem,
+        { backgroundColor: theme.card },
+        selectedIcon === item && {
+          backgroundColor: theme.primary,
+          borderWidth: 2,
+          borderColor: theme.isDark ? '#fff' : theme.primary,
+        },
       ]}
       onPress={() => handleIconSelect(item)}>
-      <Icon name={item} size={24} color="#fff" />
+      <Icon name={item} size={24} color={selectedIcon === item ? '#fff' : theme.text} />
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={24} color="#fff" />
+          <Icon name="arrow-left" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Chọn biểu tượng</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Chọn biểu tượng</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <View style={styles.categoryTabs}>
+      <View style={[styles.categoryTabs, { borderBottomColor: theme.border }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {categories.map(category => (
             <TouchableOpacity
               key={category}
               style={[
                 styles.categoryTab,
-                selectedCategory === category && styles.selectedCategoryTab,
+                { backgroundColor: theme.card },
+                selectedCategory === category && {
+                  backgroundColor: theme.primary
+                },
               ]}
               onPress={() => setSelectedCategory(category)}>
               <Text style={[
                 styles.categoryTabText,
-                selectedCategory === category && styles.selectedCategoryTabText,
+                { color: theme.textMuted },
+                selectedCategory === category && {
+                  color: '#fff'
+                },
               ]}>
                 {vietnamese[category]}
               </Text>
@@ -139,7 +152,6 @@ const ChooseIconImage = ({navigation, route}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
   },
   header: {
     flexDirection: 'row',
@@ -148,7 +160,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
   backButton: {
     padding: 8,
@@ -156,7 +167,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
   },
   headerSpacer: {
     width: 40,
@@ -164,25 +174,16 @@ const styles = StyleSheet.create({
   categoryTabs: {
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
   categoryTab: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginHorizontal: 4,
     borderRadius: 20,
-    backgroundColor: '#2a2a2a',
-  },
-  selectedCategoryTab: {
-    backgroundColor: '#007AFF',
   },
   categoryTabText: {
-    color: '#666',
     fontSize: 14,
     fontWeight: '500',
-  },
-  selectedCategoryTabText: {
-    color: '#fff',
   },
   content: {
     flex: 1,
@@ -194,16 +195,10 @@ const styles = StyleSheet.create({
   iconItem: {
     flex: 1,
     aspectRatio: 1,
-    backgroundColor: '#2a2a2a',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     margin: 6,
-  },
-  selectedIconItem: {
-    backgroundColor: '#007AFF',
-    borderWidth: 2,
-    borderColor: '#fff',
   },
 });
 

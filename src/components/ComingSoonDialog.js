@@ -2,7 +2,17 @@ import React from "react";
 import { View, Text, Modal, StyleSheet, TouchableOpacity } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 
-const ComingSoonDialog = ({ visible, onClose }) => {
+const ComingSoonDialog = ({ visible, onClose, theme }) => {
+  // Default theme if not provided
+  const defaultTheme = {
+    card: '#FFFFFF',
+    text: '#222',
+    textSecondary: '#333',
+    primary: '#8B5CF6',
+  };
+
+  const currentTheme = theme || defaultTheme;
+
   return (
     <Modal
       transparent
@@ -11,19 +21,24 @@ const ComingSoonDialog = ({ visible, onClose }) => {
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.dialog}>
+        <View style={[styles.dialog, { backgroundColor: currentTheme.card }]}>
           <Icon
             name="construct-outline"
             size={40}
-            color="#007AFF"
+            color={currentTheme.primary}
             style={{ marginBottom: 10 }}
           />
-          <Text style={styles.title}>Notification</Text>
-          <Text style={styles.message}>
-            This feature is not yet available. Please check back later!
+          <Text style={[styles.title, { color: currentTheme.text }]}>
+            Thông báo
           </Text>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeText}>Close</Text>
+          <Text style={[styles.message, { color: currentTheme.textSecondary }]}>
+            Tính năng này đang được phát triển. Vui lòng quay lại sau!
+          </Text>
+          <TouchableOpacity
+            style={[styles.closeButton, { backgroundColor: currentTheme.primary }]}
+            onPress={onClose}
+          >
+            <Text style={styles.closeText}>Đóng</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -39,33 +54,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dialog: {
-    backgroundColor: "#e0e0e0", // đổi sang xám nhạt
-    padding: 20,
-    borderRadius: 12,
-    width: "80%",
+    padding: 24,
+    borderRadius: 16,
+    width: "85%",
+    maxWidth: 400,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "600",
-    marginBottom: 10,
-    color: "#222",
+    marginBottom: 12,
   },
   message: {
-    fontSize: 14,
+    fontSize: 15,
     textAlign: "center",
-    marginBottom: 20,
-    color: "#333",
+    marginBottom: 24,
+    lineHeight: 22,
   },
   closeButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 10,
-    paddingHorizontal: 25,
-    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 10,
+    minWidth: 120,
   },
   closeText: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });
 
