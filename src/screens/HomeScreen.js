@@ -1,16 +1,18 @@
-import React, { useState, useEffect, useRef, memo, useCallback, useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import {
     View,
     Text,
     TouchableOpacity,
     ScrollView,
     StyleSheet,
-    Animated,
+    Dimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HabitContext } from '../contexts/HabitContext';
+import Svg, { Circle } from 'react-native-svg';
+
+const { width } = Dimensions.get('window');
 
 const formatDateLocal = (date) => {
     const d = new Date(date);
@@ -21,616 +23,482 @@ const formatDateLocal = (date) => {
     return `${year}-${month}-${day}`;
 };
 
-const ProgressCircle = ({ progress, size = 40, strokeWidth = 4, color = '#34C759' }) => {
+// Progress Circle Component
+const ProgressCircle = ({ progress, size = 100, strokeWidth = 8 }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (progress / 100) * circumference;
+
     return (
-      <View style={[styles.progressCircle, { width: size, height: size }]}>
-          <Animated.View style={styles.progressBackground}>
-              <View style={[styles.progressRing, {
-                  width: size,
-                  height: size,
-                  borderRadius: size / 2,
-                  borderWidth: strokeWidth,
-                  borderColor: '#333'
-              }]} />
-              {progress > 0 && (
-                <View style={[styles.progressRing, {
-                    width: size,
-                    height: size,
-                    borderRadius: size / 2,
-                    borderWidth: strokeWidth,
-                    borderColor: color,
-                    borderTopColor: progress >= 1 ? color : '#333',
-                    borderRightColor: progress >= 0.25 ? color : '#333',
-                    borderBottomColor: progress >= 0.5 ? color : '#333',
-                    borderLeftColor: progress >= 0.75 ? color : '#333',
-                    position: 'absolute'
-                }]} />
-              )}
-          </Animated.View>
+      <View style={styles.progressCircleContainer}>
+          <Svg width={size} height={size}>
+              {/* Background Circle */}
+              <Circle
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                stroke="rgba(255, 255, 255, 0.3)"
+                strokeWidth={strokeWidth}
+                fill="none"
+              />
+              {/* Progress Circle */}
+              <Circle
+                cx={size / 2}
+                cy={size / 2}
+                r={radius}
+                stroke="#4FC3F7"
+                strokeWidth={strokeWidth}
+                fill="none"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                rotation="-90"
+                origin={`${size / 2}, ${size / 2}`}
+              />
+          </Svg>
+          <View style={styles.progressTextContainer}>
+              <Text style={styles.progressText}>{Math.round(progress)}%</Text>
+          </View>
       </View>
     );
 };
 
-// HabitItem Component
-const HabitItem = memo(({ habit, navigation, onArchive }) => {
-    const { toggleHabitCompletion } = useContext(HabitContext);
-    const [commitGrid, setCommitGrid] = useState([]);
-    const scrollRef = useRef(null);
-    const [isLongPressed, setIsLongPressed] = useState(false);
-    const [overlayOpacity] = useState(new Animated.Value(0));
-    const [habitScale] = useState(new Animated.Value(1));
-
-    const getCompletionCount = useCallback((date) => {
-        return habit.completionCounts?.[date] || 0;
-    }, [habit]);
-
-    const getCompletionColor = useCallback((completionCount) => {
-        const completionsPerDay = habit.completionsPerDay || 1;
-        const baseColor = habit.color || '#34C759';
-
-        if (completionCount === 0) {
-            return '#333';
-        }
-
-        if (completionsPerDay === 1) {
-            return baseColor;
-        }
-
-        const percentage = Math.min(completionCount / completionsPerDay, 1);
-        const opacity = 0.3 + (percentage * 0.7);
-        const hex = baseColor.replace('#', '');
-        const r = parseInt(hex.substr(0, 2), 16);
-        const g = parseInt(hex.substr(2, 2), 16);
-        const b = parseInt(hex.substr(4, 2), 16);
-
-        return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-    }, [habit]);
-
-    const generateCommitGrid = useCallback((habit) => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayStr = formatDateLocal(today);
-        const currentMonth = today.getMonth();
-        const currentYear = today.getFullYear();
-        const grid = [];
-        const completions = habit.completions || [];
-
-        for (let monthOffset = 0; monthOffset < 12; monthOffset++) {
-            const targetDate = new Date(currentYear, currentMonth - monthOffset, 1);
-            const year = targetDate.getFullYear();
-            const month = targetDate.getMonth();
-            const monthGrid = [];
-            const firstDay = new Date(year, month, 1);
-            const startOfWeek = new Date(firstDay);
-            startOfWeek.setDate(firstDay.getDate() - firstDay.getDay());
-
-            for (let week = 0; week < 6; week++) {
-                const weekDays = [];
-                for (let day = 0; day < 7; day++) {
-                    const currentDate = new Date(startOfWeek);
-                    currentDate.setDate(startOfWeek.getDate() + week * 7 + day);
-                    currentDate.setHours(0, 0, 0, 0);
-                    const dateString = formatDateLocal(currentDate);
-                    const isInCurrentMonth = currentDate.getMonth() === month;
-                    const completionCount = getCompletionCount(dateString);
-                    const isCompleted = completions.includes(dateString);
-                    const isSameDay = dateString === todayStr;
-                    const isFuture = currentDate > today && !isSameDay;
-
-                    weekDays.push({
-                        date: dateString,
-                        completionCount,
-                        isCompleted,
-                        isInCurrentMonth,
-                        isFuture,
-                    });
-                }
-                monthGrid.push(weekDays);
-            }
-
-            grid.push({
-                year,
-                month,
-                monthName: firstDay.toLocaleString('default', { month: 'short' }),
-                weeks: monthGrid
-            });
-        }
-
-        return grid;
-    }, [getCompletionCount]);
+// Week Calendar Component
+const WeekCalendar = ({ theme }) => {
+    const [weekDays, setWeekDays] = useState([]);
+    const today = new Date();
 
     useEffect(() => {
-        setCommitGrid(generateCommitGrid(habit));
-    }, [habit, generateCommitGrid]);
+        const days = [];
+        const currentDay = today.getDay();
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
 
-    const handleToggleHabitCompletion = (date) => {
-        toggleHabitCompletion(habit.id, date);
-    };
+        for (let i = 0; i < 7; i++) {
+            const day = new Date(monday);
+            day.setDate(monday.getDate() + i);
+            days.push({
+                dayName: ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][day.getDay()],
+                date: day.getDate(),
+                isToday: formatDateLocal(day) === formatDateLocal(today),
+                fullDate: day,
+            });
+        }
+        setWeekDays(days);
+    }, []);
 
-    const handleLongPress = () => {
-        setIsLongPressed(true);
-        Animated.parallel([
-            Animated.timing(overlayOpacity, {
-                toValue: 0.5,
-                duration: 200,
-                useNativeDriver: false,
-            }),
-            Animated.timing(habitScale, {
-                toValue: 1.05,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    };
-
-    const handleLongPressEnd = () => {
-        Animated.parallel([
-            Animated.timing(overlayOpacity, {
-                toValue: 0,
-                duration: 200,
-                useNativeDriver: false,
-            }),
-            Animated.timing(habitScale, {
-                toValue: 1,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-        ]).start(() => {
-            setIsLongPressed(false);
-        });
-    };
-
-    // const handleEditHabit = () => {
-    //     handleLongPressEnd();
-    //     navigation.navigate('CreateHabit', { habit: habitData });
-    // };
-
-    const handleArchiveHabit = () => {
-        onArchive(habit.id);
-        handleLongPressEnd();
-    };
-
-    const todayStr = formatDateLocal(new Date());
-    const completionsPerDay = habit.completionsPerDay || 1;
-    const todayCompletionCount = getCompletionCount(todayStr);
-    const todayCompleted = todayCompletionCount >= completionsPerDay;
-    const progress = completionsPerDay > 1 ? todayCompletionCount / completionsPerDay : (todayCompleted ? 1 : 0);
     return (
-      <Animated.View
+      <View style={styles.weekCalendar}>
+          {weekDays.map((day, index) => (
+            <View
+              key={index}
+              style={[
+                  styles.dayItem,
+                  day.isToday && styles.todayItem,
+              ]}
+            >
+                <Text
+                  style={[
+                      styles.dayName,
+                      { color: day.isToday ? '#fff' : theme.textTertiary },
+                  ]}
+                >
+                    {day.dayName}
+                </Text>
+                <Text
+                  style={[
+                      styles.dayDate,
+                      { color: day.isToday ? '#fff' : theme.text },
+                  ]}
+                >
+                    {day.date}
+                </Text>
+            </View>
+          ))}
+      </View>
+    );
+};
+
+// Today Habit Item Component
+const TodayHabitItem = ({ habit, theme, onPress }) => {
+    const today = formatDateLocal(new Date());
+    const completionsPerDay = habit.completionsPerDay || 1;
+    const currentCount = habit.completionCounts?.[today] || 0;
+    const progress = (currentCount / completionsPerDay) * 100;
+    const isCompleted = currentCount >= completionsPerDay;
+
+    const getStatusColor = () => {
+        if (isCompleted) return '#4CAF50';
+        if (currentCount > 0) return '#FFA726';
+        return theme.textMuted;
+    };
+
+    const getStatusText = () => {
+        if (isCompleted) return '✓ Completed!';
+        if (currentCount > 0) return `${currentCount}/${completionsPerDay} Completed`;
+        return 'Pending';
+    };
+
+    return (
+      <TouchableOpacity
         style={[
-            styles.habitItem,
-            isLongPressed && {
-                transform: [{ scale: habitScale }],
-                zIndex: 1000,
+            styles.habitCard,
+            {
+                backgroundColor: theme.card,
+                borderColor: isCompleted ? '#4CAF50' : getStatusColor(),
             }
         ]}
+        onPress={onPress}
       >
-          {isLongPressed && (
-            <Animated.View
-              style={[
-                  styles.overlay,
-                  { opacity: overlayOpacity }
-              ]}
-            />
-          )}
-          <TouchableOpacity
-            style={styles.habitHeader}
-            onPress={() => !isLongPressed && navigation.navigate('HabitDetail', { habit: habit })}
-            onLongPress={handleLongPress}
-            delayLongPress={500}
-            activeOpacity={0.7}
-          >
-              <View style={styles.habitInfo}>
-                  <View style={[styles.habitIcon, { backgroundColor: habit.color }]}>
-                      <Icon name={habit.icon} size={24} color="#fff" />
-                  </View>
-                  <View style={styles.habitText}>
-                      <Text style={styles.habitName}>{habit.name}</Text>
-                      <Text style={styles.habitDescription}>{habit.description}</Text>
-                  </View>
+          <View style={styles.habitCardContent}>
+              <View style={[styles.habitIconContainer, { backgroundColor: habit.color }]}>
+                  <Icon name={habit.icon} size={32} color="#fff" />
               </View>
-              <View
-                style={styles.checkButtonContainer}
-                // onPress={(e) => {
-                //     e.stopPropagation();
-                //     if (!isLongPressed) {
-                //         handleToggleHabitCompletion(todayStr);
-                //     }
-                // }}
-              >
-                  {completionsPerDay === 1 ? (
-                    <View style={[
-                        styles.checkButton,
-                        todayCompleted && {backgroundColor: habit.color},
-                    ]}>
-                        <Icon
-                          name="check"
-                          size={20}
-                          color={todayCompleted ? '#fff' : '#666'}
-                        />
+
+              <View style={styles.habitInfo}>
+                  <Text style={[styles.habitName, { color: theme.text }]}>
+                      {habit.name}
+                  </Text>
+                  <Text style={[styles.habitStatus, { color: getStatusColor() }]}>
+                      {getStatusText()}
+                  </Text>
+              </View>
+
+              <View style={styles.habitProgress}>
+                  {isCompleted ? (
+                    <View style={[styles.completedBadge, { backgroundColor: '#4CAF50' }]}>
+                        <Text style={styles.completedText}>100%</Text>
                     </View>
                   ) : (
-                    <View style={styles.progressContainer}>
-                        {progress >= 1 ? (
-                          <View style={[styles.checkButton, {backgroundColor: habit.color}]}>
-                              <Icon name="check" size={16} color="#fff" />
-                          </View>
-                        ) : (
-                          <>
-                              <ProgressCircle
-                                progress={progress}
-                                color={habit.color || '#34C759'}
-                              />
-                              <View style={styles.progressText}>
-                                  <Text style={styles.progressCount}>
-                                      {todayCompletionCount}
-                                  </Text>
-                              </View>
-                          </>
-                        )}
+                    <View style={[styles.progressBadge, { borderColor: getStatusColor() }]}>
+                        <Text style={[styles.progressBadgeText, { color: theme.text }]}>
+                            {Math.round(progress)}%
+                        </Text>
                     </View>
                   )}
               </View>
-          </TouchableOpacity>
-          <View style={styles.commitGridContainer}>
-              <ScrollView
-                ref={scrollRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.commitGridScroll}
-                contentContainerStyle={styles.commitGridContent}
-                scrollEnabled={!isLongPressed}
-              >
-                  {commitGrid.map((monthData, monthIndex) => (
-                    <View key={monthIndex} style={styles.monthColumn}>
-                        <Text style={styles.monthLabel}>{monthData.monthName}</Text>
-                        <View style={styles.monthGrid}>
-                            {[0, 1, 2, 3, 4, 5, 6].map(dayOfWeek => (
-                              <View key={dayOfWeek} style={styles.dayRow}>
-                                  {monthData.weeks.map((week, weekIndex) => {
-                                      const dayData = week[dayOfWeek];
-                                      if (!dayData) return null;
-
-                                      const dayColor = (() => {
-                                          if (!dayData.isInCurrentMonth) return 'transparent';
-                                          if (dayData.isFuture) return '#222';
-                                          if (dayData.completionCount > 0) {
-                                              return getCompletionColor(dayData.completionCount);
-                                          }
-                                          return '#333';
-                                      })();
-
-                                      return (
-                                        <View
-                                          key={weekIndex}
-                                          style={[
-                                              styles.commitDay,
-                                              { backgroundColor: dayColor },
-                                          ]}
-                                        />
-                                      );
-                                  })}
-                              </View>
-                            ))}
-                        </View>
-                    </View>
-                  ))}
-              </ScrollView>
           </View>
-          {isLongPressed && (
-            <View style={styles.longPressMenu}>
-                {/*<TouchableOpacity*/}
-                {/*  style={styles.menuButton}*/}
-                {/*  onPress={handleEditHabit}*/}
-                {/*>*/}
-                {/*    <Icon name="pencil" size={20} color="#fff" />*/}
-                {/*    <Text style={styles.menuButtonText}>Edit</Text>*/}
-                {/*</TouchableOpacity>*/}
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  onPress={handleArchiveHabit}
-                >
-                    <Icon name="archive" size={20} color="#fff" />
-                    <Text style={styles.menuButtonText}>Archive</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.menuCancelButton}
-                  onPress={handleLongPressEnd}
-                >
-                    <Icon name="close" size={20} color="#666" />
-                    <Text style={styles.menuCancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-            </View>
-          )}
-      </Animated.View>
+      </TouchableOpacity>
     );
-}, (prevProps, nextProps) => {
-    return prevProps.habit.id === nextProps.habit.id &&
-      JSON.stringify(prevProps.habit.completionCounts) === JSON.stringify(nextProps.habit.completionCounts) &&
-      JSON.stringify(prevProps.habit.completions) === JSON.stringify(nextProps.habit.completions);
-});
+};
 
 const HomeScreen = ({ navigation }) => {
-    const { habits, archiveHabit } = useContext(HabitContext);
+    const { habits, theme, toggleHabitCompletion } = useContext(HabitContext);
+    const [todayHabits, setTodayHabits] = useState([]);
+    const [completionPercentage, setCompletionPercentage] = useState(0);
+
+    useEffect(() => {
+        const today = formatDateLocal(new Date());
+
+        // Get today's habits
+        const todayList = habits.filter(habit => {
+            const completionsPerDay = habit.completionsPerDay || 1;
+            const currentCount = habit.completionCounts?.[today] || 0;
+            return true; // Show all habits
+        });
+
+        setTodayHabits(todayList);
+
+        // Calculate completion percentage
+        if (todayList.length > 0) {
+            let completed = 0;
+            todayList.forEach(habit => {
+                const completionsPerDay = habit.completionsPerDay || 1;
+                const currentCount = habit.completionCounts?.[today] || 0;
+                if (currentCount >= completionsPerDay) {
+                    completed++;
+                }
+            });
+            setCompletionPercentage((completed / todayList.length) * 100);
+        } else {
+            setCompletionPercentage(0);
+        }
+    }, [habits]);
+
+    const completedCount = todayHabits.filter(habit => {
+        const today = formatDateLocal(new Date());
+        const completionsPerDay = habit.completionsPerDay || 1;
+        const currentCount = habit.completionCounts?.[today] || 0;
+        return currentCount >= completionsPerDay;
+    }).length;
 
     return (
-      <SafeAreaView style={styles.container}>
-          <View style={styles.header}>
-              <View style={styles.leftHeader}>
-                  <TouchableOpacity
-                    style={styles.settingsButton}
-                    onPress={() => navigation.navigate('Settings')}
-                  >
-                      <Icon name="cog" size={24} color="#fff" />
-                  </TouchableOpacity>
-                  <Text style={styles.appTitle}>HabitHub</Text>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Header */}
+              <View style={styles.header}>
+                  <Text style={[styles.greeting, { color: theme.text }]}>
+                      Hello, Viet!
+                  </Text>
               </View>
-              HabitHub
-              <View style={styles.headerActions}>
-                  {/*<TouchableOpacity style={styles.proButton}>*/}
-                  {/*    <Text style={styles.proButtonText}>PRO</Text>*/}
-                  {/*</TouchableOpacity>*/}
-                  <TouchableOpacity onPress={() => navigation.navigate('TestNotification')}>
-                      <Icon name="bell-ring" size={24} color="#fff" />
-                  </TouchableOpacity>
-                  {/*<TouchableOpacity>*/}
-                  {/*    <Icon name="chart-line" size={24} color="#fff" />*/}
-                  {/*</TouchableOpacity>*/}
-                  <TouchableOpacity onPress={() => navigation.navigate('CreateHabit')}>
-                      <Icon name="plus-circle" size={28} color="#fff" />
-                  </TouchableOpacity>
+
+              {/* Week Calendar */}
+              <WeekCalendar theme={theme} />
+
+              {/* Progress Card */}
+              <View style={styles.progressCard}>
+                  <View style={styles.progressCardContent}>
+                      <ProgressCircle progress={completionPercentage} />
+                      <View style={styles.progressInfo}>
+                          <Text style={styles.progressTitle}>
+                              {completedCount} of {todayHabits.length} habits
+                          </Text>
+                          <Text style={styles.progressSubtitle}>
+                              completed today!
+                          </Text>
+                          <View style={styles.celebrationEmoji}>
+                              <Text style={styles.emoji}>👏 🎯 📊</Text>
+                          </View>
+                      </View>
+                  </View>
+                  <View style={styles.illustration}>
+                      <Icon name="notebook-check" size={80} color="rgba(255,255,255,0.3)" />
+                  </View>
               </View>
-          </View>
-          <ScrollView style={styles.habitsList} scrollEnabled={true}>
-              {habits.filter((habit) => habit && habit.id).map((habit) => (
-                <HabitItem
-                  key={habit.id}
-                  habit={habit}
-                  navigation={navigation}
-                  onArchive={archiveHabit}
-                />
-              ))}
-              {habits.length === 0 && (
-                <View style={styles.emptyState}>
-                    <Icon name="format-list-checks" size={48} color="#444" />
-                    <Text style={styles.emptyText}>Chưa có thói quen</Text>
-                    <Text style={styles.emptySubtext}>
-                        Click vào nút '+' để tạo thói quen đầu tiên
-                    </Text>
-                </View>
-              )}
+
+              {/* Today Habits Section */}
+              <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                      <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                          Today habit
+                      </Text>
+                      <TouchableOpacity onPress={() => navigation.navigate('AllHabits')}>
+                          <Text style={[styles.seeAllText, { color: theme.textTertiary }]}>
+                              See all
+                          </Text>
+                      </TouchableOpacity>
+                  </View>
+
+                  {todayHabits.length > 0 ? (
+                    todayHabits.slice(0, 3).map((habit) => (
+                      <TodayHabitItem
+                        key={habit.id}
+                        habit={habit}
+                        theme={theme}
+                        onPress={() => navigation.navigate('HabitDetail', { habit })}
+                      />
+                    ))
+                  ) : (
+                    <View style={styles.emptyState}>
+                        <Icon name="inbox" size={48} color={theme.textMuted} />
+                        <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+                            No habits for today
+                        </Text>
+                        <TouchableOpacity
+                          style={[styles.addButton, { backgroundColor: theme.primary }]}
+                          onPress={() => navigation.navigate('CreateHabit')}
+                        >
+                            <Text style={styles.addButtonText}>Create your first habit</Text>
+                        </TouchableOpacity>
+                    </View>
+                  )}
+              </View>
+
+              {/* Bottom padding for tab bar */}
+              <View style={{ height: 100 }} />
           </ScrollView>
       </SafeAreaView>
     );
 };
 
-// Styles (giữ nguyên)
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1a1a1a',
     },
-    overlay: {
+    header: {
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        paddingBottom: 20,
+        alignItems: 'center',
+    },
+    greeting: {
+        fontSize: 28,
+        fontWeight: 'bold',
+    },
+    weekCalendar: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        paddingHorizontal: 10,
+        paddingVertical: 15,
+        marginBottom: 20,
+    },
+    dayItem: {
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        borderRadius: 12,
+        minWidth: 45,
+    },
+    todayItem: {
+        backgroundColor: '#42A5F5',
+    },
+    dayName: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    dayDate: {
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    progressCard: {
+        marginHorizontal: 20,
+        marginBottom: 30,
+        padding: 24,
+        borderRadius: 20,
+        backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        overflow: 'hidden',
+        position: 'relative',
+        minHeight: 180,
+        // Gradient background
+        // backgroundColor: '#667eea',
+    },
+    progressCardContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        zIndex: 1,
+    },
+    progressCircleContainer: {
+        position: 'relative',
+    },
+    progressTextContainer: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: '#000',
-        zIndex: 999,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 15,
-    },
-    leftHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    settingsButton: {
-        padding: 8,
-        marginRight: 8,
-    },
-    appTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#fff',
-    },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    proButton: {
-        backgroundColor: '#333',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 4,
-    },
-    proButtonText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    habitsList: {
-        flex: 1,
-        paddingHorizontal: 20,
-    },
-    habitItem: {
-        backgroundColor: '#2a2a2a',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-    },
-    habitHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        // marginBottom: 16,
-    },
-    habitInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    habitIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 6,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
     },
-    habitText: {
+    progressText: {
+        color: '#fff',
+        fontSize: 28,
+        fontWeight: 'bold',
+    },
+    progressInfo: {
+        marginLeft: 20,
+        flex: 1,
+    },
+    progressTitle: {
+        color: '#fff',
+        fontSize: 20,
+        fontWeight: 'bold',
+    },
+    progressSubtitle: {
+        color: 'rgba(255, 255, 255, 0.9)',
+        fontSize: 16,
+        marginTop: 4,
+    },
+    celebrationEmoji: {
+        marginTop: 8,
+    },
+    emoji: {
+        fontSize: 24,
+    },
+    illustration: {
+        position: 'absolute',
+        right: -10,
+        bottom: -10,
+        opacity: 0.3,
+    },
+    section: {
+        paddingHorizontal: 20,
+        marginBottom: 20,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    sectionTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+    },
+    seeAllText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    habitCard: {
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    habitCardContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    habitIconContainer: {
+        width: 56,
+        height: 56,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    habitInfo: {
         flex: 1,
     },
     habitName: {
-        color: '#fff',
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '600',
+        marginBottom: 4,
     },
-    habitDescription: {
-        color: '#999',
-        fontSize: 12,
-        marginTop: 1,
+    habitStatus: {
+        fontSize: 14,
+        fontWeight: '500',
     },
-    checkButtonContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
+    habitProgress: {
+        marginLeft: 12,
     },
-    checkButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 5,
-        backgroundColor: '#333',
+    completedBadge: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    checkButtonCompleted: {
-        backgroundColor: '#34C759',
-    },
-    progressContainer: {
-        position: 'relative',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    progressCircle: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    progressBackground: {
-        position: 'relative',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    progressRing: {
-        backgroundColor: 'transparent',
-    },
-    progressText: {
-        position: 'absolute',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    progressCount: {
+    completedText: {
         color: '#fff',
         fontSize: 13,
         fontWeight: 'bold',
-        textAlign: 'center',
     },
-    commitGridContainer: {
-        marginTop: 8,
-    },
-    commitGridScroll: {
-        marginTop: 8,
-        transform: [{ scaleX: -1 }]
-    },
-    commitGridContent: {
-        paddingRight: 10,
-    },
-    monthColumn: {
-        marginRight: 12,
+    progressBadge: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        borderWidth: 3,
+        justifyContent: 'center',
         alignItems: 'center',
-        transform: [{ scaleX: -1 }]
     },
-    monthLabel: {
-        color: '#999',
-        fontSize: 10,
-        fontWeight: '500',
-        marginBottom: 6,
-        textAlign: 'center',
-        width: 32,
-    },
-    monthGrid: {
-        flexDirection: 'column',
-    },
-    dayRow: {
-        flexDirection: 'row',
-        marginBottom: 2,
-    },
-    commitDay: {
-        width: 7,
-        height: 7,
-        backgroundColor: '#333',
-        borderRadius: 1,
-        marginRight: 2,
-    },
-    commitDayOutside: {
-        backgroundColor: 'transparent',
+    progressBadgeText: {
+        fontSize: 13,
+        fontWeight: 'bold',
     },
     emptyState: {
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 60,
+        paddingVertical: 40,
     },
     emptyText: {
-        color: '#666',
-        fontSize: 18,
-        fontWeight: '600',
-        marginTop: 16,
+        fontSize: 16,
+        marginTop: 12,
+        marginBottom: 20,
     },
-    emptySubtext: {
-        color: '#555',
-        fontSize: 14,
-        marginTop: 8,
-        textAlign: 'center',
-    },
-    longPressMenu: {
-        position: 'absolute',
-        bottom: 50,
-        left: 20,
-        right: 20,
-        backgroundColor: '#333',
+    addButton: {
+        paddingHorizontal: 24,
+        paddingVertical: 12,
         borderRadius: 12,
-        padding: 16,
-        zIndex: 1001,
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
     },
-    menuButton: {
-        alignItems: 'center',
-        padding: 12,
-        flex: 1,
-    },
-    menuButtonText: {
+    addButtonText: {
         color: '#fff',
-        fontSize: 12,
-        marginTop: 4,
-        fontWeight: '500',
-    },
-    menuCancelButton: {
-        alignItems: 'center',
-        padding: 12,
-        flex: 1,
-    },
-    menuCancelButtonText: {
-        color: '#666',
-        fontSize: 12,
-        marginTop: 4,
-        fontWeight: '500',
+        fontSize: 15,
+        fontWeight: '600',
     },
 });
 
