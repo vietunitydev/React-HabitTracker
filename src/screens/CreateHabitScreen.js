@@ -8,6 +8,7 @@ import {
     ScrollView,
     Switch,
     Modal,
+    Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -98,6 +99,8 @@ const CreateHabitScreen = ({ navigation, route }) => {
 
     // Số lần hoàn thành trong ngày
     const [completionsPerDay, setCompletionsPerDay] = useState(route.params?.habit?.completionsPerDay || 1);
+    const [showCompletionsModal, setShowCompletionsModal] = useState(false);
+    const [completionsInputValue, setCompletionsInputValue] = useState((route.params?.habit?.completionsPerDay || 1).toString());
 
     // Sub-habits (Composite)
     const [subHabits, setSubHabits] = useState(route.params?.habit?.subHabits || []);
@@ -125,6 +128,9 @@ const CreateHabitScreen = ({ navigation, route }) => {
                 setTimerSeconds(parts[2]);
             }
         }
+        if (route.params?.habit?.completionsPerDay) {
+            setCompletionsInputValue(route.params.habit.completionsPerDay.toString());
+        }
     }, [route.params?.habit]);
 
     const applyTemplate = (template) => {
@@ -134,6 +140,7 @@ const CreateHabitScreen = ({ navigation, route }) => {
         setSelectedColor(template.color);
         setCategory(template.category);
         setFrequency(template.frequency);
+        setCompletionsPerDay(1);
         setShowTemplates(false);
     };
 
@@ -199,6 +206,21 @@ const CreateHabitScreen = ({ navigation, route }) => {
             addHabit(habitData);
         }
         navigation.goBack();
+    };
+
+    const handleUpdateCompletionsPerDay = (newValue) => {
+        setCompletionsPerDay(newValue);
+        setCompletionsInputValue(newValue.toString());
+    };
+
+    const handleSaveCompletions = () => {
+        const numValue = parseInt(completionsInputValue, 10);
+        if (numValue > 0) {
+            handleUpdateCompletionsPerDay(numValue);
+            setShowCompletionsModal(false);
+        } else {
+            Alert.alert('Lỗi', 'Số lần hoàn thành phải lớn hơn 0.');
+        }
     };
 
     const DAYS = [
@@ -273,7 +295,7 @@ const CreateHabitScreen = ({ navigation, route }) => {
                         style={[styles.iconButton, { backgroundColor: selectedColor }]}
                         onPress={() => navigation.navigate('ChooseIconImage', { currentIcon: selectedIcon })}
                       >
-                          <Icon name={selectedIcon} size={32} color="#fff" />
+                          <Icon name={selectedIcon} size={36} color="#fff" />
                       </TouchableOpacity>
 
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colorPicker}>
@@ -450,28 +472,18 @@ const CreateHabitScreen = ({ navigation, route }) => {
                           </View>
                       </View>
                   </View>
-                  <View style={styles.completionCountContainer}>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((count) => (
-                        <TouchableOpacity
-                          key={count}
-                          style={[
-                              styles.countButton,
-                              {
-                                  backgroundColor: completionsPerDay === count ? theme.primary : theme.backgroundSecondary,
-                                  borderColor: theme.border,
-                              }
-                          ]}
-                          onPress={() => setCompletionsPerDay(count)}
-                        >
-                            <Text style={[
-                                styles.countButtonText,
-                                { color: completionsPerDay === count ? '#fff' : theme.text }
-                            ]}>
-                                {count}
-                            </Text>
-                        </TouchableOpacity>
-                      ))}
-                  </View>
+                  <TouchableOpacity
+                    style={[styles.frequencyButton, {
+                        backgroundColor: theme.backgroundSecondary,
+                        borderColor: theme.border,
+                    }]}
+                    onPress={() => setShowCompletionsModal(true)}
+                  >
+                      <Text style={[styles.frequencyText, { color: theme.text }]}>
+                          {completionsPerDay} lần
+                      </Text>
+                      <Icon name="chevron-right" size={24} color={theme.textMuted} />
+                  </TouchableOpacity>
               </View>
 
               {/* Sub-habits */}
@@ -664,6 +676,42 @@ const CreateHabitScreen = ({ navigation, route }) => {
               </View>
           </Modal>
 
+          {/* Completions Per Day Modal */}
+          <Modal
+            visible={showCompletionsModal}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setShowCompletionsModal(false)}
+          >
+              <View style={styles.modalOverlay}>
+                  <View style={[styles.modalContainer, { backgroundColor: theme.card }]}>
+                      <Text style={[styles.modalTitle, { color: theme.text }]}>Số lần hoàn thành mỗi ngày</Text>
+                      <TextInput
+                        style={[styles.numberInput, { color: theme.text, borderColor: theme.border }]}
+                        value={completionsInputValue}
+                        onChangeText={setCompletionsInputValue}
+                        keyboardType="numeric"
+                        placeholder="Nhập số (ví dụ: 3)"
+                        placeholderTextColor={theme.textSecondary}
+                      />
+                      <View style={styles.modalButtons}>
+                          <TouchableOpacity
+                            style={[styles.modalButton, styles.cancelButton, { borderColor: theme.border }]}
+                            onPress={() => setShowCompletionsModal(false)}
+                          >
+                              <Text style={[styles.modalButtonText, { color: theme.textSecondary }]}>Hủy</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.modalButton, { backgroundColor: '#2196F3' }]}
+                            onPress={handleSaveCompletions}
+                          >
+                              <Text style={styles.modalButtonText}>Lưu</Text>
+                          </TouchableOpacity>
+                      </View>
+                  </View>
+              </View>
+          </Modal>
+
           {/* Sub-habit Modal */}
           <Modal
             visible={showSubHabitModal}
@@ -717,13 +765,18 @@ const styles = StyleSheet.create({
         padding: 20,
         borderBottomWidth: 1,
     },
-    headerTitle: { fontSize: 18, fontWeight: '600' },
-    saveButton: { fontSize: 16, fontWeight: '600' },
+    headerTitle: { fontSize: 18, fontWeight: '700' },
+    saveButton: { fontSize: 16, fontWeight: '700' },
     content: { flex: 1 },
     section: {
         margin: 16,
-        padding: 16,
-        borderRadius: 12,
+        padding: 20,
+        borderRadius: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -731,28 +784,33 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 12,
     },
-    sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12 },
+    sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 12 },
     input: {
         borderWidth: 1,
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 15,
-        marginBottom: 12,
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 16,
+        marginBottom: 16,
     },
     textArea: { height: 80, textAlignVertical: 'top' },
-    row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 16 },
     iconButton: {
-        width: 64,
-        height: 64,
-        borderRadius: 12,
+        width: 72,
+        height: 72,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 4,
     },
     colorPicker: { flex: 1 },
     colorOption: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         marginRight: 8,
     },
     selectedColor: { borderWidth: 3, borderColor: '#fff' },
@@ -766,16 +824,16 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         gap: 12,
     },
-    templateButtonText: { flex: 1, fontSize: 15, fontWeight: '500' },
+    templateButtonText: { flex: 1, fontSize: 16, fontWeight: '600' },
     frequencyButton: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
-        borderRadius: 8,
+        borderRadius: 12,
         borderWidth: 1,
         gap: 12,
     },
-    frequencyText: { flex: 1, fontSize: 15 },
+    frequencyText: { flex: 1, fontSize: 16 },
     selectedDaysPreview: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -787,7 +845,7 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 12,
     },
-    dayBadgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+    dayBadgeText: { color: '#fff', fontSize: 13, fontWeight: '700' },
     settingRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -801,71 +859,56 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     settingTextContainer: { flex: 1 },
-    settingTitle: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
-    settingSubtitle: { fontSize: 13 },
+    settingTitle: { fontSize: 17, fontWeight: '700', marginBottom: 2 },
+    settingSubtitle: { fontSize: 14 },
     timeInputContainer: { marginTop: 12 },
-    label: { fontSize: 14, marginBottom: 8, fontWeight: '500' },
+    label: { fontSize: 14, marginBottom: 8, fontWeight: '600' },
     timeInput: {
         borderWidth: 1,
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 15,
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 16,
     },
     timerInputsContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 8,
+        gap: 12,
         marginTop: 12,
     },
     timerInputGroup: {
         alignItems: 'center',
         flex: 1,
     },
-    timerLabel: { fontSize: 12, marginBottom: 4 },
+    timerLabel: { fontSize: 13, marginBottom: 6 },
     timerInput: {
         borderWidth: 1,
-        borderRadius: 8,
+        borderRadius: 12,
         padding: 12,
-        fontSize: 15,
+        fontSize: 16,
         textAlign: 'center',
         width: '100%',
     },
     timerSeparator: { fontSize: 24, fontWeight: 'bold', marginTop: 16 },
-    completionCountContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginTop: 12,
-    },
-    countButton: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-    },
-    countButtonText: { fontSize: 16, fontWeight: '600' },
     subHabitItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
-        borderRadius: 8,
+        padding: 16,
+        borderRadius: 12,
         borderWidth: 1,
         marginBottom: 8,
         gap: 12,
     },
     subHabitNumber: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    subHabitNumberText: { fontSize: 12, fontWeight: 'bold', color: '#fff' },
-    subHabitName: { flex: 1, fontSize: 15 },
-    emptyText: { fontSize: 14, textAlign: 'center', padding: 20 },
+    subHabitNumberText: { fontSize: 13, fontWeight: 'bold', color: '#fff' },
+    subHabitName: { flex: 1, fontSize: 16 },
+    emptyText: { fontSize: 15, textAlign: 'center', padding: 20 },
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -884,7 +927,7 @@ const styles = StyleSheet.create({
         padding: 20,
         borderBottomWidth: 1,
     },
-    modalTitle: { fontSize: 18, fontWeight: '600' },
+    modalTitle: { fontSize: 18, fontWeight: '700' },
     templateItem: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -900,8 +943,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     templateInfo: { flex: 1 },
-    templateName: { fontSize: 16, fontWeight: '600' },
-    templateDesc: { fontSize: 13, marginTop: 2 },
+    templateName: { fontSize: 17, fontWeight: '700' },
+    templateDesc: { fontSize: 14, marginTop: 2 },
     frequencyOption: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -911,7 +954,7 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         gap: 12,
     },
-    frequencyOptionText: { fontSize: 16, fontWeight: '500' },
+    frequencyOptionText: { fontSize: 17, fontWeight: '600' },
     daySelector: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -919,21 +962,50 @@ const styles = StyleSheet.create({
         marginTop: 12,
     },
     dayButton: {
-        width: 45,
-        height: 45,
-        borderRadius: 22.5,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
     },
-    dayButtonText: { fontSize: 13, fontWeight: '600' },
+    dayButtonText: { fontSize: 14, fontWeight: '700' },
     addButton: {
         padding: 16,
-        borderRadius: 8,
+        borderRadius: 12,
         alignItems: 'center',
         margin: 20,
     },
-    addButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+    addButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+    // Modal for Completions
+    modalContainer: {
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 24,
+        maxHeight: 300,
+    },
+    numberInput: {
+        borderWidth: 1,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        fontSize: 16,
+        marginBottom: 20,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    modalButton: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginHorizontal: 4,
+        borderWidth: 1,
+    },
+    cancelButton: { backgroundColor: 'transparent' },
+    modalButtonText: { fontSize: 16, fontWeight: '700' },
 });
 
 export default CreateHabitScreen;
