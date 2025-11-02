@@ -179,7 +179,7 @@ Print this page and check off items as you complete them!
 - [ ] Update `HabitDetailScreen.js`
 - [ ] Update `CreateHabitScreen.js`
 - [ ] Update `SettingsScreen.js`
-- [ ] Update `ChooseIconImage.js`
+- [ ] Update `ChooseIconScreen.js`
 - [ ] Update `FilterScreen.js`
 - [ ] Update `NoteScreen.js`
 - [ ] Update `AllNotePage.js`
