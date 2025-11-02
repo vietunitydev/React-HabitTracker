@@ -13,18 +13,22 @@ import { HabitContext } from '../contexts/HabitContext';
 import ComingSoonDialog from '../components/ComingSoonDialog';
 
 const SettingsScreen = ({ navigation }) => {
-    const { theme, themeMode, toggleTheme, isDarkMode } = useContext(HabitContext);
+    const { theme, themeMode, toggleTheme } = useContext(HabitContext);
     const [showComingSoon, setShowComingSoon] = useState(false);
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
     // Section Header Component
-    const SectionHeader = ({ title }) => (
-      <View style={[styles.sectionHeader, { borderBottomColor: theme.border }]}>
+    const SectionHeader = ({ title }) => {
+      return (
+        <View
+          style={[styles.sectionHeader, { borderBottomColor: theme.border }]}
+        >
           <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-              {title}
+            {title}
           </Text>
-      </View>
-    );
+        </View>
+      );
+    };
 
     // Setting Item with Arrow
     const SettingItem = ({ icon, title, subtitle, onPress, iconColor, iconBg }) => (
