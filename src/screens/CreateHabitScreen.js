@@ -71,13 +71,6 @@ const HABIT_TEMPLATES = [
     },
 ];
 
-const TIME_PRESETS = [
-    { id: 'morning', label: 'Sáng', icon: 'weather-sunny', time: '07:00' },
-    { id: 'noon', label: 'Trưa', icon: 'white-balance-sunny', time: '12:00' },
-    { id: 'afternoon', label: 'Chiều', icon: 'weather-sunset', time: '17:00' },
-    { id: 'evening', label: 'Tối', icon: 'weather-night', time: '20:00' },
-];
-
 const CreateHabitScreen = ({ navigation, route }) => {
     const { addHabit, updateHabit, theme } = useContext(HabitContext);
     const isEditing = !!route.params?.habit;
@@ -89,17 +82,22 @@ const CreateHabitScreen = ({ navigation, route }) => {
     const [selectedColor, setSelectedColor] = useState(route.params?.habit?.color || '#54A0FF');
     const [category, setCategory] = useState(route.params?.habit?.category || 'Sức khỏe');
 
-    // Frequency
+    // Frequency - CHỈ GIỮ DAILY VÀ WEEKLY
     const [frequency, setFrequency] = useState(route.params?.habit?.frequency || 'daily');
     const [selectedDays, setSelectedDays] = useState(route.params?.habit?.selectedDays || []);
-    const [timesPerWeek, setTimesPerWeek] = useState(route.params?.habit?.timesPerWeek || 3);
-    const [monthlyDates, setMonthlyDates] = useState(route.params?.habit?.monthlyDates || []);
 
-    // Time
-    const [timePreset, setTimePreset] = useState('morning');
-    const [customTime, setCustomTime] = useState('07:00');
-    const [timeWindow, setTimeWindow] = useState({ start: '07:00', end: '09:00' });
-    const [useTimeWindow, setUseTimeWindow] = useState(false);
+    // Thông báo
+    const [notificationEnabled, setNotificationEnabled] = useState(route.params?.habit?.notification?.enabled || false);
+    const [notificationTime, setNotificationTime] = useState(route.params?.habit?.notification?.time || '09:00');
+
+    // Hẹn giờ
+    const [timerEnabled, setTimerEnabled] = useState(route.params?.habit?.completionTime?.enabled || false);
+    const [timerHours, setTimerHours] = useState('0');
+    const [timerMinutes, setTimerMinutes] = useState('30');
+    const [timerSeconds, setTimerSeconds] = useState('0');
+
+    // Số lần hoàn thành trong ngày
+    const [completionsPerDay, setCompletionsPerDay] = useState(route.params?.habit?.completionsPerDay || 1);
 
     // Sub-habits (Composite)
     const [subHabits, setSubHabits] = useState(route.params?.habit?.subHabits || []);
@@ -109,13 +107,25 @@ const CreateHabitScreen = ({ navigation, route }) => {
     // Modals
     const [showTemplates, setShowTemplates] = useState(!isEditing);
     const [showFrequencyModal, setShowFrequencyModal] = useState(false);
-    const [showTimeModal, setShowTimeModal] = useState(false);
 
     useEffect(() => {
         if (route.params?.selectedIcon) {
             setSelectedIcon(route.params.selectedIcon);
         }
     }, [route.params]);
+
+    // Parse timer from existing habit
+    useEffect(() => {
+        if (route.params?.habit?.completionTime?.time) {
+            const time = route.params.habit.completionTime.time;
+            const parts = time.split(':');
+            if (parts.length === 3) {
+                setTimerHours(parts[0]);
+                setTimerMinutes(parts[1]);
+                setTimerSeconds(parts[2]);
+            }
+        }
+    }, [route.params?.habit]);
 
     const applyTemplate = (template) => {
         setName(template.name);
@@ -130,12 +140,6 @@ const CreateHabitScreen = ({ navigation, route }) => {
     const toggleDay = (day) => {
         setSelectedDays(prev =>
           prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
-        );
-    };
-
-    const toggleMonthlyDate = (date) => {
-        setMonthlyDates(prev =>
-          prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
         );
     };
 
@@ -160,6 +164,12 @@ const CreateHabitScreen = ({ navigation, route }) => {
             return;
         }
 
+        // Validate frequency
+        if (frequency === 'weekly' && selectedDays.length === 0) {
+            alert('Vui lòng chọn ít nhất 1 ngày trong tuần');
+            return;
+        }
+
         const habitData = {
             id: isEditing ? route.params.habit.id : Date.now().toString(),
             name: name.trim(),
@@ -169,16 +179,18 @@ const CreateHabitScreen = ({ navigation, route }) => {
             category,
             frequency,
             selectedDays,
-            timesPerWeek,
-            monthlyDates,
-            timePreset,
-            customTime,
-            timeWindow,
-            useTimeWindow,
+            notification: {
+                enabled: notificationEnabled,
+                time: notificationTime,
+            },
+            completionTime: {
+                enabled: timerEnabled,
+                time: `${timerHours.padStart(2, '0')}:${timerMinutes.padStart(2, '0')}:${timerSeconds.padStart(2, '0')}`,
+            },
+            completionsPerDay: parseInt(completionsPerDay) || 1,
             subHabits,
             completions: isEditing ? route.params.habit.completions || [] : [],
             completionCounts: isEditing ? route.params.habit.completionCounts || {} : {},
-            completionsPerDay: 1,
         };
 
         if (isEditing) {
@@ -198,6 +210,16 @@ const CreateHabitScreen = ({ navigation, route }) => {
         { id: 6, label: 'T7', full: 'Thứ 7' },
         { id: 0, label: 'CN', full: 'Chủ nhật' },
     ];
+
+    const getFrequencyText = () => {
+        if (frequency === 'daily') return 'Hàng ngày';
+        if (frequency === 'weekly') {
+            if (selectedDays.length === 0) return 'Chọn ngày trong tuần';
+            const dayLabels = selectedDays.map(d => DAYS.find(day => day.id === d)?.label).join(', ');
+            return dayLabels;
+        }
+        return 'Chọn tần suất';
+    };
 
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -270,24 +292,9 @@ const CreateHabitScreen = ({ navigation, route }) => {
                   </View>
               </View>
 
-              {/* Templates */}
-              {!isEditing && (
-                <TouchableOpacity
-                  style={[styles.templateButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-                  onPress={() => setShowTemplates(true)}
-                >
-                    <Icon name="lightning-bolt" size={20} color={theme.primary} />
-                    <Text style={[styles.templateButtonText, { color: theme.text }]}>
-                        Chọn từ mẫu có sẵn
-                    </Text>
-                    <Icon name="chevron-right" size={20} color={theme.textMuted} />
-                </TouchableOpacity>
-              )}
-
-              {/* Frequency */}
+              {/* Frequency - CHỈ DAILY VÀ WEEKLY */}
               <View style={[styles.section, { backgroundColor: theme.card }]}>
                   <Text style={[styles.sectionTitle, { color: theme.text }]}>Tần suất</Text>
-
                   <TouchableOpacity
                     style={[styles.frequencyButton, {
                         backgroundColor: theme.backgroundSecondary,
@@ -295,150 +302,252 @@ const CreateHabitScreen = ({ navigation, route }) => {
                     }]}
                     onPress={() => setShowFrequencyModal(true)}
                   >
-                      <Icon name="calendar-repeat" size={20} color={theme.primary} />
+                      <Icon name="calendar-clock" size={24} color={theme.primary} />
                       <Text style={[styles.frequencyText, { color: theme.text }]}>
-                          {frequency === 'daily' && 'Hằng ngày'}
-                          {frequency === 'weekly' && `Theo thứ: ${selectedDays.length} ngày`}
-                          {frequency === 'times_per_week' && `${timesPerWeek} lần/tuần`}
-                          {frequency === 'monthly' && `Ngày: ${monthlyDates.join(', ')}`}
+                          {getFrequencyText()}
                       </Text>
-                      <Icon name="chevron-right" size={20} color={theme.textMuted} />
+                      <Icon name="chevron-right" size={24} color={theme.textMuted} />
                   </TouchableOpacity>
 
                   {frequency === 'weekly' && selectedDays.length > 0 && (
                     <View style={styles.selectedDaysPreview}>
-                        {DAYS.filter(d => selectedDays.includes(d.id)).map(day => (
-                          <View key={day.id} style={[styles.dayBadge, { backgroundColor: theme.primary }]}>
-                              <Text style={styles.dayBadgeText}>{day.label}</Text>
-                          </View>
-                        ))}
+                        {selectedDays.map(day => {
+                            const dayInfo = DAYS.find(d => d.id === day);
+                            return (
+                              <View key={day} style={[styles.dayBadge, { backgroundColor: selectedColor }]}>
+                                  <Text style={styles.dayBadgeText}>{dayInfo?.label}</Text>
+                              </View>
+                            );
+                        })}
                     </View>
                   )}
               </View>
 
-              {/* Time */}
+              {/* Thông báo */}
               <View style={[styles.section, { backgroundColor: theme.card }]}>
-                  <Text style={[styles.sectionTitle, { color: theme.text }]}>Thời gian thực hiện</Text>
-
-                  <View style={styles.timePresets}>
-                      {TIME_PRESETS.map((preset) => (
-                        <TouchableOpacity
-                          key={preset.id}
-                          style={[
-                              styles.timePresetButton,
-                              {
-                                  backgroundColor: theme.backgroundSecondary,
-                                  borderColor: timePreset === preset.id ? theme.primary : theme.border,
-                                  borderWidth: timePreset === preset.id ? 2 : 1,
-                              }
-                          ]}
-                          onPress={() => {
-                              setTimePreset(preset.id);
-                              setCustomTime(preset.time);
-                          }}
-                        >
-                            <Icon name={preset.icon} size={24} color={timePreset === preset.id ? theme.primary : theme.textMuted} />
-                            <Text style={[styles.timePresetLabel, { color: theme.text }]}>
-                                {preset.label}
-                            </Text>
-                        </TouchableOpacity>
-                      ))}
-                  </View>
-
-                  <View style={styles.timeWindowToggle}>
-                      <Text style={[styles.label, { color: theme.text }]}>Khung giờ linh hoạt</Text>
+                  <View style={styles.settingRow}>
+                      <View style={styles.settingLeft}>
+                          <Icon name="bell-outline" size={24} color={theme.primary} />
+                          <View style={styles.settingTextContainer}>
+                              <Text style={[styles.settingTitle, { color: theme.text }]}>Thông báo</Text>
+                              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>
+                                  Nhắc nhở hàng ngày
+                              </Text>
+                          </View>
+                      </View>
                       <Switch
-                        value={useTimeWindow}
-                        onValueChange={setUseTimeWindow}
+                        value={notificationEnabled}
+                        onValueChange={setNotificationEnabled}
                         trackColor={{ false: theme.border, true: theme.primary }}
+                        thumbColor="#fff"
                       />
                   </View>
 
-                  {useTimeWindow && (
-                    <View style={styles.timeWindowInputs}>
-                        <View style={styles.timeInput}>
-                            <Text style={[styles.timeLabel, { color: theme.textSecondary }]}>Từ</Text>
+                  {notificationEnabled && (
+                    <View style={styles.timeInputContainer}>
+                        <Text style={[styles.label, { color: theme.text }]}>Thời gian nhắc</Text>
+                        <TextInput
+                          style={[styles.timeInput, {
+                              backgroundColor: theme.backgroundSecondary,
+                              color: theme.text,
+                              borderColor: theme.border,
+                          }]}
+                          placeholder="09:00"
+                          placeholderTextColor={theme.textMuted}
+                          value={notificationTime}
+                          onChangeText={setNotificationTime}
+                        />
+                    </View>
+                  )}
+              </View>
+
+              {/* Hẹn giờ */}
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
+                  <View style={styles.settingRow}>
+                      <View style={styles.settingLeft}>
+                          <Icon name="timer-outline" size={24} color={theme.primary} />
+                          <View style={styles.settingTextContainer}>
+                              <Text style={[styles.settingTitle, { color: theme.text }]}>Hẹn giờ</Text>
+                              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>
+                                  Đếm thời gian hoàn thành
+                              </Text>
+                          </View>
+                      </View>
+                      <Switch
+                        value={timerEnabled}
+                        onValueChange={setTimerEnabled}
+                        trackColor={{ false: theme.border, true: theme.primary }}
+                        thumbColor="#fff"
+                      />
+                  </View>
+
+                  {timerEnabled && (
+                    <View style={styles.timerInputsContainer}>
+                        <View style={styles.timerInputGroup}>
+                            <Text style={[styles.timerLabel, { color: theme.textMuted }]}>Giờ</Text>
                             <TextInput
-                              style={[styles.timeField, {
+                              style={[styles.timerInput, {
                                   backgroundColor: theme.backgroundSecondary,
                                   color: theme.text,
                                   borderColor: theme.border,
                               }]}
-                              value={timeWindow.start}
-                              onChangeText={(text) => setTimeWindow({...timeWindow, start: text})}
-                              placeholder="07:00"
+                              placeholder="0"
                               placeholderTextColor={theme.textMuted}
+                              value={timerHours}
+                              onChangeText={setTimerHours}
+                              keyboardType="numeric"
+                              maxLength={2}
                             />
                         </View>
-                        <Text style={[styles.timeSeparator, { color: theme.textMuted }]}>—</Text>
-                        <View style={styles.timeInput}>
-                            <Text style={[styles.timeLabel, { color: theme.textSecondary }]}>Đến</Text>
+                        <Text style={[styles.timerSeparator, { color: theme.text }]}>:</Text>
+                        <View style={styles.timerInputGroup}>
+                            <Text style={[styles.timerLabel, { color: theme.textMuted }]}>Phút</Text>
                             <TextInput
-                              style={[styles.timeField, {
+                              style={[styles.timerInput, {
                                   backgroundColor: theme.backgroundSecondary,
                                   color: theme.text,
                                   borderColor: theme.border,
                               }]}
-                              value={timeWindow.end}
-                              onChangeText={(text) => setTimeWindow({...timeWindow, end: text})}
-                              placeholder="09:00"
+                              placeholder="30"
                               placeholderTextColor={theme.textMuted}
+                              value={timerMinutes}
+                              onChangeText={setTimerMinutes}
+                              keyboardType="numeric"
+                              maxLength={2}
+                            />
+                        </View>
+                        <Text style={[styles.timerSeparator, { color: theme.text }]}>:</Text>
+                        <View style={styles.timerInputGroup}>
+                            <Text style={[styles.timerLabel, { color: theme.textMuted }]}>Giây</Text>
+                            <TextInput
+                              style={[styles.timerInput, {
+                                  backgroundColor: theme.backgroundSecondary,
+                                  color: theme.text,
+                                  borderColor: theme.border,
+                              }]}
+                              placeholder="0"
+                              placeholderTextColor={theme.textMuted}
+                              value={timerSeconds}
+                              onChangeText={setTimerSeconds}
+                              keyboardType="numeric"
+                              maxLength={2}
                             />
                         </View>
                     </View>
                   )}
+              </View>
+
+              {/* Số lần hoàn thành trong ngày */}
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
+                  <View style={styles.settingRow}>
+                      <View style={styles.settingLeft}>
+                          <Icon name="counter" size={24} color={theme.primary} />
+                          <View style={styles.settingTextContainer}>
+                              <Text style={[styles.settingTitle, { color: theme.text }]}>Số lần hoàn thành</Text>
+                              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>
+                                  Mỗi ngày
+                              </Text>
+                          </View>
+                      </View>
+                  </View>
+                  <View style={styles.completionCountContainer}>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((count) => (
+                        <TouchableOpacity
+                          key={count}
+                          style={[
+                              styles.countButton,
+                              {
+                                  backgroundColor: completionsPerDay === count ? theme.primary : theme.backgroundSecondary,
+                                  borderColor: theme.border,
+                              }
+                          ]}
+                          onPress={() => setCompletionsPerDay(count)}
+                        >
+                            <Text style={[
+                                styles.countButtonText,
+                                { color: completionsPerDay === count ? '#fff' : theme.text }
+                            ]}>
+                                {count}
+                            </Text>
+                        </TouchableOpacity>
+                      ))}
+                  </View>
               </View>
 
               {/* Sub-habits */}
               <View style={[styles.section, { backgroundColor: theme.card }]}>
                   <View style={styles.sectionHeader}>
-                      <Text style={[styles.sectionTitle, { color: theme.text }]}>Các bước thực hiện</Text>
+                      <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                          Các bước thực hiện ({subHabits.length})
+                      </Text>
                       <TouchableOpacity onPress={() => setShowSubHabitModal(true)}>
                           <Icon name="plus-circle" size={24} color={theme.primary} />
                       </TouchableOpacity>
                   </View>
 
-                  {subHabits.length > 0 ? (
+                  {subHabits.length === 0 ? (
+                    <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+                        Chưa có bước thực hiện nào
+                    </Text>
+                  ) : (
                     subHabits.map((subHabit, index) => (
-                      <View key={subHabit.id} style={[styles.subHabitItem, { borderColor: theme.border }]}>
-                          <View style={styles.subHabitNumber}>
-                              <Text style={[styles.subHabitNumberText, { color: theme.primary }]}>
-                                  {index + 1}
-                              </Text>
+                      <View
+                        key={subHabit.id}
+                        style={[styles.subHabitItem, {
+                            backgroundColor: theme.backgroundSecondary,
+                            borderColor: theme.border,
+                        }]}
+                      >
+                          <View style={[styles.subHabitNumber, { backgroundColor: selectedColor }]}>
+                              <Text style={styles.subHabitNumberText}>{index + 1}</Text>
                           </View>
                           <Text style={[styles.subHabitName, { color: theme.text }]}>
                               {subHabit.name}
                           </Text>
                           <TouchableOpacity onPress={() => removeSubHabit(subHabit.id)}>
-                              <Icon name="close-circle" size={20} color={theme.error} />
+                              <Icon name="close-circle" size={24} color={theme.textMuted} />
                           </TouchableOpacity>
                       </View>
                     ))
-                  ) : (
-                    <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-                        Chia nhỏ thói quen thành các bước cụ thể
-                    </Text>
                   )}
               </View>
 
-              <View style={{ height: 100 }} />
+              <View style={{ height: 40 }} />
           </ScrollView>
 
-          {/* Templates Modal */}
-          <Modal visible={showTemplates} animationType="slide" transparent>
+          {/* Template Modal */}
+          <Modal
+            visible={showTemplates}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setShowTemplates(false)}
+          >
               <View style={styles.modalOverlay}>
                   <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-                      <View style={styles.modalHeader}>
+                      <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
                           <Text style={[styles.modalTitle, { color: theme.text }]}>Chọn mẫu</Text>
                           <TouchableOpacity onPress={() => setShowTemplates(false)}>
                               <Icon name="close" size={24} color={theme.text} />
                           </TouchableOpacity>
                       </View>
                       <ScrollView>
+                          <TouchableOpacity
+                            style={[styles.templateButton, {
+                                backgroundColor: theme.backgroundSecondary,
+                                borderColor: theme.border,
+                            }]}
+                            onPress={() => setShowTemplates(false)}
+                          >
+                              <Icon name="pencil" size={24} color={theme.primary} />
+                              <Text style={[styles.templateButtonText, { color: theme.text }]}>
+                                  Tạo thói quen tùy chỉnh
+                              </Text>
+                          </TouchableOpacity>
+
                           {HABIT_TEMPLATES.map((template) => (
                             <TouchableOpacity
                               key={template.id}
-                              style={[styles.templateItem, { borderColor: theme.border }]}
+                              style={[styles.templateItem, { borderBottomColor: theme.border }]}
                               onPress={() => applyTemplate(template)}
                             >
                                 <View style={[styles.templateIcon, { backgroundColor: template.color }]}>
@@ -448,11 +557,10 @@ const CreateHabitScreen = ({ navigation, route }) => {
                                     <Text style={[styles.templateName, { color: theme.text }]}>
                                         {template.name}
                                     </Text>
-                                    <Text style={[styles.templateDesc, { color: theme.textSecondary }]}>
+                                    <Text style={[styles.templateDesc, { color: theme.textMuted }]}>
                                         {template.description}
                                     </Text>
                                 </View>
-                                <Icon name="chevron-right" size={20} color={theme.textMuted} />
                             </TouchableOpacity>
                           ))}
                       </ScrollView>
@@ -460,11 +568,16 @@ const CreateHabitScreen = ({ navigation, route }) => {
               </View>
           </Modal>
 
-          {/* Frequency Modal */}
-          <Modal visible={showFrequencyModal} animationType="slide" transparent>
+          {/* Frequency Modal - CHỈ DAILY VÀ WEEKLY */}
+          <Modal
+            visible={showFrequencyModal}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setShowFrequencyModal(false)}
+          >
               <View style={styles.modalOverlay}>
                   <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-                      <View style={styles.modalHeader}>
+                      <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
                           <Text style={[styles.modalTitle, { color: theme.text }]}>Chọn tần suất</Text>
                           <TouchableOpacity onPress={() => setShowFrequencyModal(false)}>
                               <Icon name="close" size={24} color={theme.text} />
@@ -473,145 +586,78 @@ const CreateHabitScreen = ({ navigation, route }) => {
                       <ScrollView>
                           {/* Daily */}
                           <TouchableOpacity
-                            style={[
-                                styles.frequencyOption,
-                                { borderColor: frequency === 'daily' ? theme.primary : theme.border }
-                            ]}
-                            onPress={() => setFrequency('daily')}
+                            style={[styles.frequencyOption, {
+                                backgroundColor: frequency === 'daily' ? theme.primary : theme.backgroundSecondary,
+                                borderColor: frequency === 'daily' ? theme.primary : theme.border,
+                            }]}
+                            onPress={() => {
+                                setFrequency('daily');
+                                setShowFrequencyModal(false);
+                            }}
                           >
-                              <Icon name="calendar-today" size={24} color={theme.primary} />
-                              <Text style={[styles.frequencyOptionText, { color: theme.text }]}>
-                                  Hằng ngày
+                              <Icon
+                                name="calendar-today"
+                                size={24}
+                                color={frequency === 'daily' ? '#fff' : theme.text}
+                              />
+                              <Text style={[
+                                  styles.frequencyOptionText,
+                                  { color: frequency === 'daily' ? '#fff' : theme.text }
+                              ]}>
+                                  Hàng ngày
                               </Text>
-                              {frequency === 'daily' && (
-                                <Icon name="check-circle" size={20} color={theme.primary} />
-                              )}
                           </TouchableOpacity>
 
                           {/* Weekly */}
-                          <TouchableOpacity
-                            style={[
-                                styles.frequencyOption,
-                                { borderColor: frequency === 'weekly' ? theme.primary : theme.border }
-                            ]}
-                            onPress={() => setFrequency('weekly')}
-                          >
-                              <Icon name="calendar-week" size={24} color={theme.primary} />
-                              <View style={{ flex: 1 }}>
-                                  <Text style={[styles.frequencyOptionText, { color: theme.text }]}>
-                                      Theo thứ trong tuần
+                          <View style={[styles.frequencyOption, {
+                              backgroundColor: frequency === 'weekly' ? theme.primary : theme.backgroundSecondary,
+                              borderColor: frequency === 'weekly' ? theme.primary : theme.border,
+                          }]}>
+                              <TouchableOpacity
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+                                onPress={() => setFrequency('weekly')}
+                              >
+                                  <Icon
+                                    name="calendar-week"
+                                    size={24}
+                                    color={frequency === 'weekly' ? '#fff' : theme.text}
+                                  />
+                                  <Text style={[
+                                      styles.frequencyOptionText,
+                                      { color: frequency === 'weekly' ? '#fff' : theme.text }
+                                  ]}>
+                                      Thứ trong tuần
                                   </Text>
-                                  {frequency === 'weekly' && (
-                                    <View style={styles.daySelector}>
-                                        {DAYS.map((day) => (
-                                          <TouchableOpacity
-                                            key={day.id}
-                                            style={[
-                                                styles.dayButton,
-                                                {
-                                                    backgroundColor: selectedDays.includes(day.id)
-                                                      ? theme.primary
-                                                      : theme.backgroundSecondary,
-                                                    borderColor: theme.border,
-                                                }
-                                            ]}
-                                            onPress={() => toggleDay(day.id)}
-                                          >
-                                              <Text style={[
-                                                  styles.dayButtonText,
-                                                  { color: selectedDays.includes(day.id) ? '#fff' : theme.text }
-                                              ]}>
-                                                  {day.label}
-                                              </Text>
-                                          </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                  )}
-                              </View>
-                          </TouchableOpacity>
+                              </TouchableOpacity>
+                          </View>
 
-                          {/* Times per week */}
-                          <TouchableOpacity
-                            style={[
-                                styles.frequencyOption,
-                                { borderColor: frequency === 'times_per_week' ? theme.primary : theme.border }
-                            ]}
-                            onPress={() => setFrequency('times_per_week')}
-                          >
-                              <Icon name="numeric" size={24} color={theme.primary} />
-                              <View style={{ flex: 1 }}>
-                                  <Text style={[styles.frequencyOptionText, { color: theme.text }]}>
-                                      Số lần mỗi tuần
-                                  </Text>
-                                  {frequency === 'times_per_week' && (
-                                    <View style={styles.timesSelector}>
-                                        {[1, 2, 3, 4, 5, 6, 7].map((num) => (
-                                          <TouchableOpacity
-                                            key={num}
-                                            style={[
-                                                styles.timesButton,
-                                                {
-                                                    backgroundColor: timesPerWeek === num
-                                                      ? theme.primary
-                                                      : theme.backgroundSecondary,
-                                                    borderColor: theme.border,
-                                                }
-                                            ]}
-                                            onPress={() => setTimesPerWeek(num)}
-                                          >
-                                              <Text style={[
-                                                  styles.timesButtonText,
-                                                  { color: timesPerWeek === num ? '#fff' : theme.text }
-                                              ]}>
-                                                  {num}
-                                              </Text>
-                                          </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                  )}
-                              </View>
-                          </TouchableOpacity>
+                          {frequency === 'weekly' && (
+                            <View style={[styles.daySelector, { marginHorizontal: 16 }]}>
+                                {DAYS.map((day) => (
+                                  <TouchableOpacity
+                                    key={day.id}
+                                    style={[styles.dayButton, {
+                                        backgroundColor: selectedDays.includes(day.id) ? selectedColor : theme.backgroundSecondary,
+                                        borderColor: theme.border,
+                                    }]}
+                                    onPress={() => toggleDay(day.id)}
+                                  >
+                                      <Text style={[
+                                          styles.dayButtonText,
+                                          { color: selectedDays.includes(day.id) ? '#fff' : theme.text }
+                                      ]}>
+                                          {day.label}
+                                      </Text>
+                                  </TouchableOpacity>
+                                ))}
+                            </View>
+                          )}
 
-                          {/* Monthly */}
                           <TouchableOpacity
-                            style={[
-                                styles.frequencyOption,
-                                { borderColor: frequency === 'monthly' ? theme.primary : theme.border }
-                            ]}
-                            onPress={() => setFrequency('monthly')}
+                            style={[styles.addButton, { backgroundColor: theme.primary }]}
+                            onPress={() => setShowFrequencyModal(false)}
                           >
-                              <Icon name="calendar-month" size={24} color={theme.primary} />
-                              <View style={{ flex: 1 }}>
-                                  <Text style={[styles.frequencyOptionText, { color: theme.text }]}>
-                                      Ngày cụ thể trong tháng
-                                  </Text>
-                                  {frequency === 'monthly' && (
-                                    <View style={styles.dateGrid}>
-                                        {Array.from({ length: 31 }, (_, i) => i + 1).map((date) => (
-                                          <TouchableOpacity
-                                            key={date}
-                                            style={[
-                                                styles.dateButton,
-                                                {
-                                                    backgroundColor: monthlyDates.includes(date)
-                                                      ? theme.primary
-                                                      : theme.backgroundSecondary,
-                                                    borderColor: theme.border,
-                                                }
-                                            ]}
-                                            onPress={() => toggleMonthlyDate(date)}
-                                          >
-                                              <Text style={[
-                                                  styles.dateButtonText,
-                                                  { color: monthlyDates.includes(date) ? '#fff' : theme.text }
-                                              ]}>
-                                                  {date}
-                                              </Text>
-                                          </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                  )}
-                              </View>
+                              <Text style={styles.addButtonText}>Xong</Text>
                           </TouchableOpacity>
                       </ScrollView>
                   </View>
@@ -619,15 +665,17 @@ const CreateHabitScreen = ({ navigation, route }) => {
           </Modal>
 
           {/* Sub-habit Modal */}
-          <Modal visible={showSubHabitModal} animationType="slide" transparent>
+          <Modal
+            visible={showSubHabitModal}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setShowSubHabitModal(false)}
+          >
               <View style={styles.modalOverlay}>
                   <View style={[styles.modalContent, styles.smallModal, { backgroundColor: theme.card }]}>
-                      <View style={styles.modalHeader}>
+                      <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
                           <Text style={[styles.modalTitle, { color: theme.text }]}>Thêm bước</Text>
-                          <TouchableOpacity onPress={() => {
-                              setShowSubHabitModal(false);
-                              setNewSubHabitName('');
-                          }}>
+                          <TouchableOpacity onPress={() => setShowSubHabitModal(false)}>
                               <Icon name="close" size={24} color={theme.text} />
                           </TouchableOpacity>
                       </View>
@@ -636,6 +684,7 @@ const CreateHabitScreen = ({ navigation, route }) => {
                             backgroundColor: theme.backgroundSecondary,
                             color: theme.text,
                             borderColor: theme.border,
+                            margin: 20,
                         }]}
                         placeholder="Tên bước thực hiện"
                         placeholderTextColor={theme.textMuted}
@@ -739,41 +788,65 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     dayBadgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-    timePresets: {
-        flexDirection: 'row',
-        gap: 8,
-        marginBottom: 16,
-    },
-    timePresetButton: {
-        flex: 1,
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        gap: 4,
-    },
-    timePresetLabel: { fontSize: 12, fontWeight: '500' },
-    timeWindowToggle: {
+    settingRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginTop: 8,
+        marginBottom: 12,
     },
-    label: { fontSize: 15 },
-    timeWindowInputs: {
+    settingLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        marginTop: 12,
+        flex: 1,
     },
-    timeInput: { flex: 1 },
-    timeLabel: { fontSize: 12, marginBottom: 4 },
-    timeField: {
+    settingTextContainer: { flex: 1 },
+    settingTitle: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
+    settingSubtitle: { fontSize: 13 },
+    timeInputContainer: { marginTop: 12 },
+    label: { fontSize: 14, marginBottom: 8, fontWeight: '500' },
+    timeInput: {
         borderWidth: 1,
         borderRadius: 8,
         padding: 12,
         fontSize: 15,
     },
-    timeSeparator: { fontSize: 20, marginTop: 16 },
+    timerInputsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 12,
+    },
+    timerInputGroup: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    timerLabel: { fontSize: 12, marginBottom: 4 },
+    timerInput: {
+        borderWidth: 1,
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 15,
+        textAlign: 'center',
+        width: '100%',
+    },
+    timerSeparator: { fontSize: 24, fontWeight: 'bold', marginTop: 16 },
+    completionCountContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 12,
+    },
+    countButton: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+    },
+    countButtonText: { fontSize: 16, fontWeight: '600' },
     subHabitItem: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -790,7 +863,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    subHabitNumberText: { fontSize: 12, fontWeight: 'bold' },
+    subHabitNumberText: { fontSize: 12, fontWeight: 'bold', color: '#fff' },
     subHabitName: { flex: 1, fontSize: 15 },
     emptyText: { fontSize: 14, textAlign: 'center', padding: 20 },
     modalOverlay: {
@@ -810,7 +883,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#333',
     },
     modalTitle: { fontSize: 18, fontWeight: '600' },
     templateItem: {
@@ -847,43 +919,14 @@ const styles = StyleSheet.create({
         marginTop: 12,
     },
     dayButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 45,
+        height: 45,
+        borderRadius: 22.5,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
     },
     dayButtonText: { fontSize: 13, fontWeight: '600' },
-    timesSelector: {
-        flexDirection: 'row',
-        gap: 8,
-        marginTop: 12,
-    },
-    timesButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-    },
-    timesButtonText: { fontSize: 15, fontWeight: '600' },
-    dateGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginTop: 12,
-    },
-    dateButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-    },
-    dateButtonText: { fontSize: 13, fontWeight: '600' },
     addButton: {
         padding: 16,
         borderRadius: 8,

@@ -639,6 +639,88 @@ export const HabitProvider = ({ children }) => {
     return { completed, count, required };
   }, [habits]);
 
+  // Save or update a note for a habit on a specific date
+  const saveNote = useCallback(async (habitId, date, noteContent) => {
+    try {
+      setHabits((prevHabits) =>
+        prevHabits.map((habit) => {
+          if (habit.id !== habitId) return habit;
+
+          const notes = habit.notes || [];
+          const existingNoteIndex = notes.findIndex(note => note.date === date);
+
+          let updatedNotes;
+          if (existingNoteIndex !== -1) {
+            // Update existing note
+            updatedNotes = [...notes];
+            updatedNotes[existingNoteIndex] = {
+              ...updatedNotes[existingNoteIndex],
+              content: noteContent,
+              timestamp: Date.now(),
+            };
+          } else {
+            // Add new note
+            updatedNotes = [
+              ...notes,
+              {
+                date: date,
+                content: noteContent,
+                timestamp: Date.now(),
+              }
+            ];
+          }
+
+          return {
+            ...habit,
+            notes: updatedNotes,
+          };
+        })
+      );
+      console.log('Note saved successfully for habit:', habitId, 'date:', date);
+    } catch (error) {
+      console.error('Error saving note:', error);
+    }
+  }, []);
+
+  // Get note for a specific habit and date
+  const getNote = useCallback((habitId, date) => {
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit || !habit.notes) return null;
+
+    return habit.notes.find(note => note.date === date) || null;
+  }, [habits]);
+
+  // Delete a note
+  const deleteNote = useCallback(async (habitId, date) => {
+    try {
+      setHabits((prevHabits) =>
+        prevHabits.map((habit) => {
+          if (habit.id !== habitId) return habit;
+
+          const notes = habit.notes || [];
+          const updatedNotes = notes.filter(note => note.date !== date);
+
+          return {
+            ...habit,
+            notes: updatedNotes,
+          };
+        })
+      );
+      console.log('Note deleted successfully for habit:', habitId, 'date:', date);
+    } catch (error) {
+      console.error('Error deleting note:', error);
+    }
+  }, []);
+
+  // Get all notes for a habit
+  const getHabitNotes = useCallback((habitId) => {
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit || !habit.notes) return [];
+
+    // Sort by date, newest first
+    return habit.notes.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [habits]);
+
   // Cleanup intervals on unmount
   useEffect(() => {
     return () => {
@@ -671,6 +753,11 @@ export const HabitProvider = ({ children }) => {
         resetTimer,
         completeEarly,
         getTimerState,
+        // Note functions
+        saveNote,
+        getNote,
+        deleteNote,
+        getHabitNotes,
         // Theme properties
         theme,
         themeMode,

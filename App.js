@@ -15,6 +15,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import HabitDetailScreen from './src/screens/HabitDetailScreen';
 import ChooseIconImage from './src/screens/ChooseIconImage';
 import NoteScreen from './src/screens/NoteScreen';
+import AllNotePage from './src/screens/AllNotePage';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -137,6 +138,7 @@ const MainStack = () => {
       <Stack.Screen name="HabitDetail" component={HabitDetailScreen} />
       <Stack.Screen name="ChooseIconImage" component={ChooseIconImage} />
       <Stack.Screen name="Note" component={NoteScreen} />
+      <Stack.Screen name="AllNotePage" component={AllNotePage} />
     </Stack.Navigator>
   );
 };

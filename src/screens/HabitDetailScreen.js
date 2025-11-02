@@ -719,25 +719,38 @@ const SubHabitsSection = memo(({ subHabits, habitColor, theme, handleSubHabitTog
 });
 
 const NotesSection = memo(({ today, habitId, habitName, theme, navigation }) => (
-  <TouchableOpacity
-    style={[styles.noteButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-    onPress={() => navigation.navigate('Note', {
-        date: today,
-        habitId: habitId,
-        habitName: habitName,
-    })}
-  >
-      <Icon name="notebook" size={24} color={theme.primary} />
-      <View style={{ flex: 1 }}>
-          <Text style={[styles.noteTitle, { color: theme.text }]}>
-              Ghi chú hôm nay
+  <View style={{ marginVertical: 8 }}>
+      <TouchableOpacity
+        style={[styles.noteButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+        onPress={() => navigation.navigate('Note', {
+            date: today,
+            habitId: habitId,
+            habitName: habitName,
+        })}
+      >
+          <Icon name="notebook" size={24} color={theme.primary} />
+          <View style={{ flex: 1 }}>
+              <Text style={[styles.noteTitle, { color: theme.text }]}>
+                  Ghi chú hôm nay
+              </Text>
+              <Text style={[styles.noteSubtitle, { color: theme.textSecondary }]}>
+                  Chia sẻ cảm nhận của bạn
+              </Text>
+          </View>
+          <Icon name="chevron-right" size={24} color={theme.textMuted} />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.allNotesButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+        onPress={() => navigation.navigate('AllNotePage')}
+      >
+          <Icon name="note-text-outline" size={20} color={theme.primary} />
+          <Text style={[styles.allNotesText, { color: theme.text }]}>
+              Xem tất cả ghi chú
           </Text>
-          <Text style={[styles.noteSubtitle, { color: theme.textSecondary }]}>
-              Chia sẻ cảm nhận của bạn
-          </Text>
-      </View>
-      <Icon name="chevron-right" size={24} color={theme.textMuted} />
-  </TouchableOpacity>
+          <Icon name="arrow-right" size={20} color={theme.textMuted} />
+      </TouchableOpacity>
+  </View>
 ));
 
 // --- MAIN SCREEN COMPONENT ---
@@ -1090,6 +1103,20 @@ const styles = StyleSheet.create({
     },
     noteTitle: { fontSize: 16, fontWeight: '500' },
     noteSubtitle: { fontSize: 13, marginTop: 2 },
+    allNotesButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        gap: 8,
+    },
+    allNotesText: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '500'
+    },
 
     timerSection: {
         width: '100%',
