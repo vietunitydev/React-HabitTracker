@@ -6,7 +6,8 @@ import {
     ScrollView,
     StyleSheet,
     Animated,
-    Alert, // Thêm Alert để xử lý lỗi phát triển
+    Alert,
+    Dimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +16,9 @@ import { HabitContext } from '../contexts/HabitContext';
 import ComingSoonDialog from '../components/ComingSoonDialog';
 import CompletionAnimation from '../components/CompletionAnimation';
 import SnoozeDialog from '../components/SnoozeDialog';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
 
 // --- HELPER FUNCTIONS ---
 
@@ -103,8 +107,8 @@ const calculateStreakData = (completions, completionsPerDay) => {
 // --- MEMOIZED COMPONENTS ---
 
 const CircularTimer = memo(({ timeCompletion, isRunning, remainingTime, color }) => {
-    const size = 50;
-    const strokeWidth = 5;
+    const size = 80;
+    const strokeWidth = 8;
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
 
@@ -112,8 +116,13 @@ const CircularTimer = memo(({ timeCompletion, isRunning, remainingTime, color })
     const strokeDashoffset = circumference - (progress * circumference);
 
     const formatTime = (seconds) => {
-        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
+
+        if (hours > 0) {
+            return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
         return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
@@ -125,7 +134,7 @@ const CircularTimer = memo(({ timeCompletion, isRunning, remainingTime, color })
                     cx={size / 2}
                     cy={size / 2}
                     r={radius}
-                    stroke="#333"
+                    stroke="rgba(255,255,255,0.1)"
                     strokeWidth={strokeWidth}
                     fill="none"
                   />
@@ -133,7 +142,7 @@ const CircularTimer = memo(({ timeCompletion, isRunning, remainingTime, color })
                     cx={size / 2}
                     cy={size / 2}
                     r={radius}
-                    stroke={color || "#FF6B6B"}
+                    stroke={color || "#8B5CF6"}
                     strokeWidth={strokeWidth}
                     fill="none"
                     strokeDasharray={circumference}
@@ -142,19 +151,18 @@ const CircularTimer = memo(({ timeCompletion, isRunning, remainingTime, color })
                     transform={`rotate(-90 ${size / 2} ${size / 2})`}
                   />
               </Svg>
-          </View>
-          <View style={styles.timerTextContainer}>
-              <Text style={styles.timerText}>
-                  {formatTime(remainingTime)}
-              </Text>
+              <View style={styles.timerTextContainer}>
+                  <Text style={styles.timerText}>
+                      {formatTime(remainingTime)}
+                  </Text>
+              </View>
           </View>
       </View>
     );
 });
 
-
 const TimerSection = memo(({ habitId, completionTime, habitData, habitColor, onCheckIn }) => {
-    const { getTimerState, startTimer, pauseTimer, resumeTimer, resetTimer, completeEarly } = useContext(HabitContext);
+    const { getTimerState, startTimer, pauseTimer, resumeTimer, resetTimer, completeEarly, theme } = useContext(HabitContext);
     const [completionsToday, setCompletionsToday] = useState(0);
 
     const timerState = getTimerState(habitId);
@@ -180,7 +188,6 @@ const TimerSection = memo(({ habitId, completionTime, habitData, habitColor, onC
         if (isFullyCompleted) return;
 
         if (isTimerEnabled && totalSeconds > 0) {
-            // Timer logic
             if (!timerState) {
                 startTimer(habitId);
             } else if (timerState) {
@@ -193,14 +200,13 @@ const TimerSection = memo(({ habitId, completionTime, habitData, habitColor, onC
                 }
             }
         } else {
-            // Check-in logic when timer is disabled (FIX 3: Dùng onCheckIn)
             onCheckIn(true);
         }
     };
 
     const handleCompleteEarly = () => {
         completeEarly(habitId);
-        onCheckIn(true); // FIX 3: Kích hoạt check-in sau khi hoàn thành sớm
+        onCheckIn(true);
     };
 
     const getButtonText = () => {
@@ -212,7 +218,7 @@ const TimerSection = memo(({ habitId, completionTime, habitData, habitColor, onC
             }
         }
 
-        if (!isTimerEnabled) return 'Bắt đầu';
+        if (!isTimerEnabled) return 'Check-in';
 
         if (!timerState) return 'Bắt đầu';
         if (remainingTime === 0) return 'Đặt lại';
@@ -222,50 +228,47 @@ const TimerSection = memo(({ habitId, completionTime, habitData, habitColor, onC
 
     const getButtonIcon = () => {
         if (isFullyCompleted) return 'check-circle';
-
         if (!isTimerEnabled) return 'calendar-check';
-
         if (!timerState) return 'play';
         if (remainingTime === 0) return 'refresh';
         if (isRunning) return 'pause';
         return 'play';
     };
 
-    const getButtonStyle = () => {
-        if (isFullyCompleted) return [styles.startButton, styles.disabledButton];
-
-        if (!isTimerEnabled) return [styles.startButton, styles.checkInButton];
-
-        return [styles.startButton, { backgroundColor: habitColor || '#FF6B6B' }];
-    };
-
-    const displayTime = isTimerEnabled ? remainingTime : 0;
-
     return (
-      <View style={[styles.timerSection, isFullyCompleted && styles.timerSectionDisabled]}>
-          <View style={styles.timerWrapper}>
-              <View style={[styles.circularTimerWrapper, isFullyCompleted && styles.circularTimerDisabled]}>
-                  <CircularTimer
-                    timeCompletion={totalSeconds}
-                    isRunning={isRunning}
-                    remainingTime={displayTime}
-                    color={habitColor}
-                  />
-              </View>
-              {completionsPerDay > 1 && (
-                <View style={styles.progressContainer}>
-                    <Text style={[styles.progressText, isFullyCompleted && styles.progressTextCompleted]}>
-                        {completionsToday}/{completionsPerDay} lần hôm nay
-                    </Text>
-                </View>
-              )}
-          </View>
+      <View style={[styles.timerSection, { backgroundColor: theme.card }]}>
+          {isTimerEnabled && timerState && (
+            <View style={styles.timerWrapper}>
+                <CircularTimer
+                  timeCompletion={totalSeconds}
+                  isRunning={isRunning}
+                  remainingTime={remainingTime}
+                  color={habitColor}
+                />
+                {completionsPerDay > 1 && (
+                  <View style={styles.progressContainer}>
+                      <Text style={[
+                          styles.progressText,
+                          isFullyCompleted && styles.progressTextCompleted,
+                          { color: theme.textMuted }
+                      ]}>
+                          {completionsToday}/{completionsPerDay}
+                      </Text>
+                  </View>
+                )}
+            </View>
+          )}
+
           <View style={styles.timerButtons}>
               <TouchableOpacity
-                style={getButtonStyle()}
+                style={[
+                    styles.startButton,
+                    { backgroundColor: isFullyCompleted ? theme.border : habitColor },
+                    !isTimerEnabled && styles.checkInButton,
+                    isFullyCompleted && styles.disabledButton
+                ]}
                 onPress={handleStart}
                 disabled={isFullyCompleted}
-                activeOpacity={isFullyCompleted ? 1 : 0.7}
               >
                   <Icon name={getButtonIcon()} size={20} color="#fff" />
                   <Text style={[styles.startButtonText, isFullyCompleted && styles.startButtonTextDisabled]}>
@@ -273,7 +276,7 @@ const TimerSection = memo(({ habitId, completionTime, habitData, habitColor, onC
                   </Text>
               </TouchableOpacity>
               {isTimerEnabled && timerState && remainingTime > 0 && isRunning && !isFullyCompleted && (
-                <TouchableOpacity style={styles.completeEarlyButton} onPress={handleCompleteEarly}>
+                <TouchableOpacity style={[styles.completeEarlyButton, { backgroundColor: habitColor }]} onPress={handleCompleteEarly}>
                     <Icon name="check" size={20} color="#fff" />
                     <Text style={styles.completeEarlyButtonText}>Xong</Text>
                 </TouchableOpacity>
@@ -283,52 +286,59 @@ const TimerSection = memo(({ habitId, completionTime, habitData, habitColor, onC
     );
 });
 
-
 const NotificationSection = memo(({ notification, completionTime, theme }) => {
     const hasNotification = notification?.enabled && notification?.time;
     const hasTimer = completionTime?.enabled && completionTime?.time;
 
+    if (!hasNotification && !hasTimer) return null;
+
     return (
       <View style={[styles.notificationSection, { backgroundColor: theme.card }]}>
-          <View style={styles.notificationLeft}>
-              <Icon name="bell-outline" size={20} color={theme.primary} />
-              <View style={styles.notificationTextContainer}>
-                  <Text style={[styles.notificationLabel, { color: theme.textSecondary }]}>Thông báo</Text>
-                  <Text style={[styles.notificationValue, { color: theme.text }]}>
-                      {hasNotification ? notification.time : 'Chưa cài đặt'}
-                  </Text>
-              </View>
-          </View>
-          <View style={styles.notificationRight}>
-              <Icon name="timer-outline" size={20} color="#4CAF50" />
-              <View style={styles.notificationTextContainer}>
-                  <Text style={[styles.notificationLabel, { color: theme.textSecondary }]}>Hẹn giờ</Text>
-                  <Text style={[styles.notificationValue, { color: theme.text }]}>
-                      {hasTimer ? completionTime.time : 'Chưa cài đặt'}
-                  </Text>
-              </View>
-          </View>
+          {hasNotification && (
+            <View style={styles.notificationItem}>
+                <View style={[styles.notificationIconBg, { backgroundColor: `${theme.primary}20` }]}>
+                    <Icon name="bell-ring" size={18} color={theme.primary} />
+                </View>
+                <View style={styles.notificationTextContainer}>
+                    <Text style={[styles.notificationLabel, { color: theme.textMuted }]}>Thông báo</Text>
+                    <Text style={[styles.notificationValue, { color: theme.text }]}>
+                        {notification.time}
+                    </Text>
+                </View>
+            </View>
+          )}
+          {hasTimer && (
+            <View style={styles.notificationItem}>
+                <View style={[styles.notificationIconBg, { backgroundColor: 'rgba(76, 175, 80, 0.1)' }]}>
+                    <Icon name="timer" size={18} color="#4CAF50" />
+                </View>
+                <View style={styles.notificationTextContainer}>
+                    <Text style={[styles.notificationLabel, { color: theme.textMuted }]}>Hẹn giờ</Text>
+                    <Text style={[styles.notificationValue, { color: theme.text }]}>
+                        {completionTime.time}
+                    </Text>
+                </View>
+            </View>
+          )}
       </View>
     );
 });
 
-
 const HabitInfo = memo(({ name, icon, color, description, theme }) => (
-  <View style={styles.habitInfo}>
+  <View style={[styles.habitInfo, { backgroundColor: theme.card }]}>
       <View style={[styles.habitIcon, { backgroundColor: color }]}>
-          <Icon name={icon} size={32} color="#fff" />
+          <Icon name={icon} size={36} color="#fff" />
       </View>
       <View style={styles.habitText}>
           <Text style={[styles.habitName, { color: theme.text }]}>{name}</Text>
-          {description && (
-            <Text style={[styles.habitDescription, { color: theme.textSecondary }]}>{description}</Text>
-          )}
+          {description ? (
+            <Text style={[styles.habitDescription, { color: theme.textMuted }]}>{description}</Text>
+          ) : null}
       </View>
   </View>
 ));
 
-
-const StreakBar = memo(({ currentStreak, isTodayCompleted, onEdit, onSettings, onStreakAnimationComplete }) => {
+const StreakBar = memo(({ currentStreak, isTodayCompleted, longestStreak, onEdit, onSettings, onStreakAnimationComplete, theme, habitColor }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const bounceAnim = useRef(new Animated.Value(1)).current;
     const [animatedStreak, setAnimatedStreak] = useState(currentStreak);
@@ -353,28 +363,24 @@ const StreakBar = memo(({ currentStreak, isTodayCompleted, onEdit, onSettings, o
         } else {
             setAnimatedStreak(currentStreak);
         }
-    }, [currentStreak, animatedStreak, scaleAnim, bounceAnim, onStreakAnimationComplete]);
+    }, [currentStreak]);
 
     const getFireColor = () => {
-        if (!isTodayCompleted && currentStreak > 0) {
-            return '#666';
-        }
+        if (!isTodayCompleted && currentStreak > 0) return theme.textMuted;
         return '#FF6B6B';
     };
 
     const getFireIcon = () => {
-        if (!isTodayCompleted && currentStreak > 0) {
-            return 'fire-off';
-        }
+        if (!isTodayCompleted && currentStreak > 0) return 'fire-off';
         return 'fire';
     };
 
     return (
-      <View style={styles.streakBar}>
-          <View style={styles.streakLeft}>
-              <View style={styles.targetBlock}>
+      <View style={[styles.streakBar, { backgroundColor: theme.card }]}>
+          <View style={styles.streakContent}>
+              <View style={styles.streakItem}>
                   <Animated.View style={[styles.fireIconContainer, { transform: [{ scale: scaleAnim }] }]}>
-                      <Icon name={getFireIcon()} size={20} color={getFireColor()} />
+                      <Icon name={getFireIcon()} size={28} color={getFireColor()} />
                       {showFireworks && (
                         <View style={styles.fireworksContainer}>
                             <Text style={styles.fireworks}>✨</Text>
@@ -383,34 +389,33 @@ const StreakBar = memo(({ currentStreak, isTodayCompleted, onEdit, onSettings, o
                         </View>
                       )}
                   </Animated.View>
-                  <Animated.Text
-                    style={[
-                        styles.flameCount,
-                        {
-                            transform: [{ scale: bounceAnim }],
-                            color: getFireColor()
-                        }
-                    ]}
-                  >
-                      {animatedStreak}
-                  </Animated.Text>
+                  <View style={styles.streakTextContainer}>
+                      <Animated.Text style={[styles.streakNumber, { color: getFireColor(), transform: [{ scale: bounceAnim }] }]}>
+                          {animatedStreak}
+                      </Animated.Text>
+                      <Text style={[styles.streakLabel, { color: theme.textMuted }]}>Streak</Text>
+                  </View>
               </View>
-              {!isTodayCompleted && currentStreak > 0 && (
-                <Text style={styles.streakHint}>Điểm danh hôm nay để giữ streak!</Text>
-              )}
+
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+              <View style={styles.streakItem}>
+                  <Icon name="trophy" size={28} color={habitColor} />
+                  <View style={styles.streakTextContainer}>
+                      <Text style={[styles.streakNumber, { color: theme.text }]}>{longestStreak}</Text>
+                      <Text style={[styles.streakLabel, { color: theme.textMuted }]}>Kỷ lục</Text>
+                  </View>
+              </View>
           </View>
-          <View style={styles.streakRight}>
-              <TouchableOpacity style={styles.iconButton} onPress={onEdit}>
-                  <Icon name="pencil" size={20} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton} onPress={onSettings}>
-                  <Icon name="cog" size={20} color="#fff" />
-              </TouchableOpacity>
-          </View>
+
+          {!isTodayCompleted && currentStreak > 0 && (
+            <Text style={[styles.streakHint, { color: theme.warning }]}>
+                ⚠️ Điểm danh hôm nay để giữ streak!
+            </Text>
+          )}
       </View>
     );
 });
-
 
 const HistoryGrid = memo(({ completionCounts, completionsPerDay, color, theme }) => {
     const normalizeDate = (date) => {
@@ -440,7 +445,7 @@ const HistoryGrid = memo(({ completionCounts, completionsPerDay, color, theme })
                 for (let day = 0; day < 7; day++) {
                     const currentDate = new Date(startOfWeek);
                     currentDate.setDate(startOfWeek.getDate() + week * 7 + day);
-                    const dateString = formatDateLocal(currentDate)
+                    const dateString = formatDateLocal(currentDate);
                     const cdNorm = normalizeDate(currentDate);
 
                     const isInCurrentMonth = currentDate.getMonth() === month;
@@ -450,87 +455,71 @@ const HistoryGrid = memo(({ completionCounts, completionsPerDay, color, theme })
                     const isFuture = cdNorm > now && !isToday;
 
                     weekDays.push({
-                        date: dateString,
-                        completionCount,
+                        date: currentDate,
                         isCompleted,
+                        isToday,
                         isInCurrentMonth,
                         isFuture,
-                        isToday,
+                        count: completionCount
                     });
                 }
                 monthGrid.push(weekDays);
             }
 
-            grid.push({
-                year,
-                month,
-                monthName: firstDay.toLocaleString('default', { month: 'short' }),
-                weeks: monthGrid,
-            });
+            const monthNames = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
+            grid.push({ month: monthNames[month], weeks: monthGrid });
         }
+
         return grid;
     };
 
-    const getCompletionColorForDay = (completionCount) => {
-        const baseColor = color || theme.primary;
-        if (completionCount === 0) return theme.backgroundSecondary;
-        if (completionsPerDay === 1) return baseColor;
+    const commitGrid = useMemo(() => generateCommitGrid(), [completionCounts, completionsPerDay]);
 
-        const percentage = Math.min(completionCount / completionsPerDay, 1);
-        const opacity = 0.3 + (percentage * 0.7);
-        const hex = baseColor.replace('#', '');
-        const r = parseInt(hex.substr(0, 2), 16);
-        const g = parseInt(hex.substr(2, 2), 16);
-        const b = parseInt(hex.substr(4, 2), 16);
-        return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    const getCompletionColor = (count) => {
+        if (count === 0) return theme.backgroundSecondary;
+        const opacity = Math.min(count / completionsPerDay, 1);
+        return `${color}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`;
     };
 
-    const grid = useMemo(() => generateCommitGrid(), [completionCounts, completionsPerDay, color, theme]);
-
     return (
-      <View style={{ marginTop: 1 }}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.commitGridScroll}
-          >
-              {grid.map((monthData, i) => (
-                <View key={i} style={styles.monthColumn}>
-                    <Text style={[styles.monthLabel, { color: theme.textSecondary }]}>{monthData.monthName}</Text>
-                    <View style={styles.monthGrid}>
-                        {[0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => (
-                          <View key={dayOfWeek} style={styles.dayRow}>
-                              {monthData.weeks.map((week, wi) => {
-                                  const dayData = week[dayOfWeek];
-                                  const dayColor = dayData.isInCurrentMonth && dayData.completionCount > 0
-                                    ? getCompletionColorForDay(dayData.completionCount)
-                                    : (dayData.isFuture ? theme.border : theme.backgroundSecondary);
-                                  return (
-                                    <View
-                                      key={wi}
-                                      style={[
-                                          styles.commitDay,
-                                          !dayData.isInCurrentMonth && styles.commitDayOutside,
-                                          dayData.isInCurrentMonth && { backgroundColor: dayColor },
-                                      ]}
-                                    />
-                                  );
-                              })}
-                          </View>
-                        ))}
-                    </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.commitGridScroll}
+      >
+          {commitGrid.map((monthData, monthIndex) => (
+            <View key={monthIndex} style={styles.monthColumn}>
+                <Text style={[styles.monthLabel, { color: theme.textMuted }]}>{monthData.month}</Text>
+                <View style={styles.monthGrid}>
+                    {monthData.weeks.map((week, weekIndex) => (
+                      <View key={weekIndex} style={styles.dayRow}>
+                          {week.map((day, dayIndex) => {
+                              if (!day.isInCurrentMonth) {
+                                  return <View key={dayIndex} style={[styles.commitDay, styles.commitDayOutside]} />;
+                              }
+                              const bgColor = day.isFuture ? 'transparent' : getCompletionColor(day.count);
+                              return (
+                                <View
+                                  key={dayIndex}
+                                  style={[
+                                      styles.commitDay,
+                                      { backgroundColor: bgColor },
+                                      day.isToday && { borderWidth: 1, borderColor: color }
+                                  ]}
+                                />
+                              );
+                          })}
+                      </View>
+                    ))}
                 </View>
-              ))}
-          </ScrollView>
-      </View>
+            </View>
+          ))}
+      </ScrollView>
     );
 });
 
 const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onToggleDate, theme }) => {
-    const today = new Date();
-    const maxMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const minMonth = new Date(today.getFullYear(), today.getMonth() - 11, 1);
-    const [viewMonth, setViewMonth] = useState(maxMonth);
+    const [currentMonth, setCurrentMonth] = useState(new Date());
 
     const normalizeDate = (date) => {
         const d = new Date(date);
@@ -538,91 +527,87 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
         return d;
     };
 
-    const generateMonthCalendar = (monthDate) => {
-        const todayNorm = normalizeDate(new Date());
-        const start = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-        const end = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
-
-        const startOfWeek = new Date(start);
-        startOfWeek.setDate(start.getDate() - start.getDay());
-
-        const endOfWeek = new Date(end);
-        endOfWeek.setDate(end.getDate() + (6 - end.getDay()));
+    const generateCalendar = () => {
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const startOfWeek = new Date(firstDay);
+        startOfWeek.setDate(firstDay.getDate() - firstDay.getDay());
 
         const weeks = [];
-        let current = new Date(startOfWeek);
+        const now = normalizeDate(new Date());
 
-        while (current <= endOfWeek) {
-            const week = [];
-            for (let d = 0; d < 7; d++) {
-                const cd = normalizeDate(current);
-                const dateString = formatDateLocal(cd);
-                const isInMonth = cd.getMonth() === monthDate.getMonth();
-                const isToday = cd.getTime() === todayNorm.getTime();
-                const isFuture = cd > todayNorm && !isToday;
+        for (let week = 0; week < 6; week++) {
+            const days = [];
+            for (let day = 0; day < 7; day++) {
+                const currentDate = new Date(startOfWeek);
+                currentDate.setDate(startOfWeek.getDate() + week * 7 + day);
+                const dateString = formatDateLocal(currentDate);
+                const cdNorm = normalizeDate(currentDate);
+
                 const count = completionCounts[dateString] || 0;
+                const isCompleted = count >= completionsPerDay;
+                const isInMonth = currentDate.getMonth() === month;
+                const isToday = cdNorm.getTime() === now.getTime();
+                const isFuture = cdNorm > now;
 
-                week.push({
-                    date: cd,
+                days.push({
+                    date: currentDate,
                     dateString,
+                    count,
+                    isCompleted,
                     isInMonth,
                     isToday,
-                    isFuture,
-                    count,
+                    isFuture
                 });
-
-                current.setDate(current.getDate() + 1);
             }
-            weeks.push(week);
+            weeks.push(days);
         }
 
         return weeks;
     };
 
-    const goPrevMonth = () => {
-        const prev = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
-        if (prev < minMonth) return;
-        setViewMonth(prev);
+    const weeks = useMemo(() => generateCalendar(), [currentMonth, completionCounts, completionsPerDay]);
+
+    const getCompletionColorForDay = (count) => {
+        if (count === 0) return 'transparent';
+        const opacity = Math.min(count / completionsPerDay, 1);
+        return `${color}${Math.round(opacity * 255).toString(16).padStart(2, '0')}`;
     };
 
-    const goNextMonth = () => {
-        const next = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
-        if (next > maxMonth) return;
-        setViewMonth(next);
-    };
-
-    const getCompletionColorForDay = (completionCount) => {
-        const baseColor = color || theme.primary;
-        if (completionCount === 0) return theme.backgroundSecondary;
-        if (completionsPerDay === 1) return baseColor;
-
-        const percentage = Math.min(completionCount / completionsPerDay, 1);
-        const opacity = (percentage * 0.7);
-        const hex = baseColor.replace('#', '');
-        const r = parseInt(hex.substr(0, 2), 16);
-        const g = parseInt(hex.substr(2, 2), 16);
-        const b = parseInt(hex.substr(4, 2), 16);
-        return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-    };
-
-    const weeks = useMemo(() => generateMonthCalendar(viewMonth), [viewMonth, completionCounts, completionsPerDay, color, theme]);
-
-    const monthLabel = viewMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+    const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+        'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
 
     return (
-      <View style={{ marginTop: 12, backgroundColor: theme.card, padding: 16, borderRadius: 12 }}>
+      <View style={[styles.section, { backgroundColor: theme.card }]}>
           <View style={styles.monthNavRow}>
-              <TouchableOpacity onPress={goPrevMonth} style={styles.navIcon}>
+              <TouchableOpacity
+                style={styles.navIcon}
+                onPress={() => {
+                    const newMonth = new Date(currentMonth);
+                    newMonth.setMonth(newMonth.getMonth() - 1);
+                    setCurrentMonth(newMonth);
+                }}
+              >
                   <Icon name="chevron-left" size={24} color={theme.text} />
               </TouchableOpacity>
-              <Text style={[styles.monthTitle, { color: theme.text }]}>{monthLabel}</Text>
-              <TouchableOpacity onPress={goNextMonth} style={styles.navIcon}>
+              <Text style={[styles.monthTitle, { color: theme.text }]}>
+                  {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+              </Text>
+              <TouchableOpacity
+                style={styles.navIcon}
+                onPress={() => {
+                    const newMonth = new Date(currentMonth);
+                    newMonth.setMonth(newMonth.getMonth() + 1);
+                    setCurrentMonth(newMonth);
+                }}
+              >
                   <Icon name="chevron-right" size={24} color={theme.text} />
               </TouchableOpacity>
           </View>
           <View style={styles.weekDaysHeader}>
               {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((d, i) => (
-                <Text key={i} style={[styles.weekDayText, { color: theme.textSecondary }]}>{d}</Text>
+                <Text key={i} style={[styles.weekDayText, { color: theme.textMuted }]}>{d}</Text>
               ))}
           </View>
           {weeks.map((week, wi) => (
@@ -638,9 +623,9 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
                         key={di}
                         style={[
                             styles.dayButton,
-                            day.isToday && { borderWidth: 2, borderColor: theme.primary }, // Highlight today
+                            { backgroundColor: bg },
+                            day.isToday && { borderWidth: 2, borderColor: color },
                             disabled && styles.futureDay,
-                            day.isInMonth && { backgroundColor: bg },
                         ]}
                         onPress={() => {
                             if (!disabled) onToggleDate(day.dateString);
@@ -657,15 +642,11 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
                           >
                               {day.date.getDate()}
                           </Text>
-                          <View style={{ position: 'absolute', bottom: 0 }}>
-                              {day.count > 0 && completionsPerDay > 1 ? (
-                                <Text style={styles.smallCountText}>
-                                    {day.count}/{completionsPerDay}
-                                </Text>
-                              ) : (
-                                <Text style={styles.smallCountTextEmpty}> </Text>
-                              )}
-                          </View>
+                          {day.count > 0 && completionsPerDay > 1 && (
+                            <Text style={[styles.smallCountText, { color: theme.textMuted }]}>
+                                {day.count}/{completionsPerDay}
+                            </Text>
+                          )}
                       </TouchableOpacity>
                     );
                 })}
@@ -674,9 +655,6 @@ const MonthCalendar = memo(({ completionCounts, completionsPerDay, color, onTogg
       </View>
     );
 });
-
-
-// --- V1 COMPONENTS TÍCH HỢP ---
 
 const SubHabitsSection = memo(({ subHabits, habitColor, theme, handleSubHabitToggle }) => {
     if (!subHabits || subHabits.length === 0) return null;
@@ -689,7 +667,10 @@ const SubHabitsSection = memo(({ subHabits, habitColor, theme, handleSubHabitTog
           {subHabits.map((subHabit, index) => (
             <TouchableOpacity
               key={subHabit.id}
-              style={[styles.subHabitItem, { borderColor: theme.border }]}
+              style={[styles.subHabitItem, {
+                  backgroundColor: theme.backgroundSecondary,
+                  borderColor: theme.border
+              }]}
               onPress={() => handleSubHabitToggle(subHabit.id)}
             >
                 <View style={[
@@ -719,36 +700,38 @@ const SubHabitsSection = memo(({ subHabits, habitColor, theme, handleSubHabitTog
 });
 
 const NotesSection = memo(({ today, habitId, habitName, theme, navigation }) => (
-  <View style={{ marginVertical: 8 }}>
+  <View style={styles.notesWrapper}>
       <TouchableOpacity
-        style={[styles.noteButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+        style={[styles.noteButton, { backgroundColor: theme.card }]}
         onPress={() => navigation.navigate('Note', {
             date: today,
             habitId: habitId,
             habitName: habitName,
         })}
       >
-          <Icon name="notebook" size={24} color={theme.primary} />
+          <View style={[styles.noteIconBg, { backgroundColor: `${theme.primary}20` }]}>
+              <Icon name="notebook-edit" size={22} color={theme.primary} />
+          </View>
           <View style={{ flex: 1 }}>
               <Text style={[styles.noteTitle, { color: theme.text }]}>
                   Ghi chú hôm nay
               </Text>
-              <Text style={[styles.noteSubtitle, { color: theme.textSecondary }]}>
-                  Chia sẻ cảm nhận của bạn
+              <Text style={[styles.noteSubtitle, { color: theme.textMuted }]}>
+                  Chia sẻ cảm nhận và tiến độ
               </Text>
           </View>
           <Icon name="chevron-right" size={24} color={theme.textMuted} />
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.allNotesButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+        style={[styles.allNotesButton, { backgroundColor: theme.backgroundSecondary }]}
         onPress={() => navigation.navigate('AllNotePage')}
       >
-          <Icon name="note-text-outline" size={20} color={theme.primary} />
+          <Icon name="note-multiple" size={18} color={theme.primary} />
           <Text style={[styles.allNotesText, { color: theme.text }]}>
               Xem tất cả ghi chú
           </Text>
-          <Icon name="arrow-right" size={20} color={theme.textMuted} />
+          <Icon name="arrow-right" size={18} color={theme.textMuted} />
       </TouchableOpacity>
   </View>
 ));
@@ -762,89 +745,63 @@ const HabitDetailScreen = ({ navigation, route }) => {
     const [showDialog, setShowDialog] = useState(false);
     const [showSnooze, setShowSnooze] = useState(false);
     const [selectedDate, setSelectedDate] = useState(null);
-    const [showAnimation, setShowAnimation] = useState(false); // FIX 3: State cho animation
+    const [showAnimation, setShowAnimation] = useState(false);
 
     const today = formatDateLocal(new Date());
 
-    // FIX 3: Hàm wrapper để xử lý điểm danh hôm nay và Animation
     const handleTodayCompletion = (isCompletingAction) => {
         const maxCompletions = habitInfo.completionsPerDay || 1;
         const todayCompletions = habitInfo.completionCounts?.[today] || 0;
 
         if (!isCompletingAction) {
-            // Trường hợp: UNDO completion
             toggleHabitCompletion(habitInfo.id, today);
             return;
         }
 
-        // Trường hợp: COMPLETE action
         const willBeCompleted = (todayCompletions + 1) >= maxCompletions;
 
         if (willBeCompleted && todayCompletions < maxCompletions) {
-            // Chỉ hiển thị animation nếu lần hoàn thành này đạt limit
             setShowAnimation(true);
         }
 
         toggleHabitCompletion(habitInfo.id, today);
     };
 
-    // Toggle date completion (Month Calendar click)
     const toggleDate = async (dateString) => {
         const maxCompletions = habitInfo.completionsPerDay || 1;
-        const todayCompletions = habitInfo.completionCounts?.[dateString] || 0;
-
-        const isCurrentlyCompleted = todayCompletions >= maxCompletions;
+        const currentCount = habitInfo.completionCounts?.[dateString] || 0;
         const dateIsToday = dateString === today;
-        const dateIsOld = new Date(dateString) < new Date(today);
 
-        // Logic to UNDO completion
-        if (isCurrentlyCompleted) {
-            toggleHabitCompletion(habitInfo.id, dateString);
-            return;
-        }
-
-        // Logic to COMPLETE action
-        if (!isCurrentlyCompleted) {
-
-            // FIX 2: Show Snooze Dialog cho ngày cũ chưa hoàn thành
-            if (dateIsOld) {
+        if (currentCount >= maxCompletions) {
+            if (dateIsToday && currentCount === maxCompletions) {
                 setSelectedDate(dateString);
                 setShowSnooze(true);
                 return;
             }
-
-            // Xử lý điểm danh ngày hôm nay
-            if (dateIsToday) {
-                // Dùng hàm wrapper để xử lý animation
-                handleTodayCompletion(true);
-                return;
-            }
-
-            // Nếu không phải hôm nay và không phải ngày cũ (tức là ngày trong tương lai - không thể click được nhờ logic của MonthCalendar)
             toggleHabitCompletion(habitInfo.id, dateString);
+            return;
         }
+
+        if (dateIsToday) {
+            handleTodayCompletion(true);
+            return;
+        }
+
+        toggleHabitCompletion(habitInfo.id, dateString);
     };
 
-    // Handler cho Snooze Dialog
     const handleSnooze = (reason) => {
         if (reason === 'completed') {
-            // Giả định người dùng đã hoàn thành ngày hôm đó
             toggleHabitCompletion(habitInfo.id, selectedDate);
-        } else if (reason === 'snoozed') {
-            // Xử lý logic hoãn/bỏ lỡ
         }
         setShowSnooze(false);
         setSelectedDate(null);
-    }
-
-    // Logic Placeholder cho Sub-Habits (từ V1)
-    const handleSubHabitToggle = (subHabitId) => {
-        // Cần logic cập nhật `habitInfo.subHabits` và gọi `updateHabit` tại đây
-        Alert.alert("Tính năng đang phát triển", "Logic Sub-Habit chưa được hoàn thiện trong HabitContext.");
-        // setShowDialog(true);
     };
 
-    // Calculate stats
+    const handleSubHabitToggle = (subHabitId) => {
+        Alert.alert("Tính năng đang phát triển", "Logic Sub-Habit chưa được hoàn thiện.");
+    };
+
     useEffect(() => {
         const completionsArray = habitInfo.completions || [];
         const newStreakData = calculateStreakData(
@@ -854,9 +811,7 @@ const HabitDetailScreen = ({ navigation, route }) => {
         setStreakData(newStreakData);
     }, [habitInfo.completions, habitInfo.completionsPerDay]);
 
-    const handleStreakAnimationComplete = () => {
-        // console.log('Streak animation completed!');
-    };
+    const handleStreakAnimationComplete = () => {};
 
     if (!habitsLoaded) {
         return (
@@ -869,7 +824,7 @@ const HabitDetailScreen = ({ navigation, route }) => {
                   <View style={{ width: 36 }} />
               </View>
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                  <Text style={{ color: theme.textSecondary }}>Đang tải...</Text>
+                  <Text style={{ color: theme.textMuted }}>Đang tải...</Text>
               </View>
           </SafeAreaView>
         );
@@ -881,12 +836,17 @@ const HabitDetailScreen = ({ navigation, route }) => {
               <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                   <Icon name="arrow-left" size={24} color={theme.text} />
               </TouchableOpacity>
-              <Text style={[styles.title, { color: theme.text }]}>Chi tiết</Text>
+              <Text style={[styles.title, { color: theme.text }]}>Chi tiết thói quen</Text>
               <TouchableOpacity onPress={() => navigation.navigate('CreateHabit', { habit: habitInfo })}>
                   <Icon name="pencil" size={24} color={theme.text} />
               </TouchableOpacity>
           </View>
-          <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 20 }}>
+
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={{ paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+          >
               {/* Habit Info */}
               <HabitInfo
                 name={habitInfo.name}
@@ -899,15 +859,36 @@ const HabitDetailScreen = ({ navigation, route }) => {
               {/* Streak Bar */}
               <StreakBar
                 currentStreak={streakData.currentStreak}
+                longestStreak={streakData.longestStreak}
                 isTodayCompleted={streakData.isTodayCompleted}
                 onEdit={() => setShowDialog(true)}
                 onSettings={() => setShowDialog(true)}
                 onStreakAnimationComplete={handleStreakAnimationComplete}
+                theme={theme}
+                habitColor={habitInfo.color}
               />
 
-              {/* History Grid (GitHub-style) */}
-              <View style={{ backgroundColor: theme.card, borderRadius: 12, marginTop: 12, paddingVertical: 12 }}>
-                  <Text style={[styles.sectionTitle, { color: theme.text, marginLeft: 16, marginBottom: 8 }]}>Lịch sử 12 tháng</Text>
+              {/* Timer/Check-in Section */}
+              <TimerSection
+                habitId={habitInfo.id}
+                completionTime={habitInfo.completionTime}
+                habitData={habitInfo}
+                habitColor={habitInfo.color}
+                onCheckIn={handleTodayCompletion}
+              />
+
+              {/* Notifications & Timer Settings */}
+              <NotificationSection
+                notification={habitInfo.notification}
+                completionTime={habitInfo.completionTime}
+                theme={theme}
+              />
+
+              {/* History Grid (12 months) */}
+              <View style={[styles.section, { backgroundColor: theme.card }]}>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                      Lịch sử 12 tháng
+                  </Text>
                   <HistoryGrid
                     completionCounts={habitInfo.completionCounts || {}}
                     completionsPerDay={habitInfo.completionsPerDay || 1}
@@ -916,7 +897,7 @@ const HabitDetailScreen = ({ navigation, route }) => {
                   />
               </View>
 
-              {/* Month Calendar (for detailed toggle) */}
+              {/* Month Calendar */}
               <MonthCalendar
                 completionCounts={habitInfo.completionCounts || {}}
                 completionsPerDay={habitInfo.completionsPerDay || 1}
@@ -933,7 +914,7 @@ const HabitDetailScreen = ({ navigation, route }) => {
                 handleSubHabitToggle={handleSubHabitToggle}
               />
 
-              {/* Notes (FIX 1: Đảm bảo màn hình Note được đăng ký) */}
+              {/* Notes */}
               <NotesSection
                 today={today}
                 habitId={habitInfo.id}
@@ -941,30 +922,10 @@ const HabitDetailScreen = ({ navigation, route }) => {
                 theme={theme}
                 navigation={navigation}
               />
-
-              {/* Notifications & Timer/Check-in Settings */}
-              <NotificationSection
-                notification={habitInfo.notification}
-                completionTime={habitInfo.completionTime}
-                theme={theme}
-              />
-
-              {/* Timer/Check-in Section (Primary Action) */}
-              <TimerSection
-                habitId={habitInfo.id}
-                completionTime={habitInfo.completionTime}
-                habitData={habitInfo}
-                habitColor={habitInfo.color}
-                onCheckIn={handleTodayCompletion} // FIX 3: Dùng hàm wrapper
-              />
-
-              <View style={{ height: 40 }} />
           </ScrollView>
 
           {/* Dialogs */}
           <ComingSoonDialog visible={showDialog} onClose={() => setShowDialog(false)} theme={theme} />
-
-          {/* FIX 2: Snooze Dialog */}
           <SnoozeDialog
             visible={showSnooze}
             onClose={() => setShowSnooze(false)}
@@ -973,8 +934,6 @@ const HabitDetailScreen = ({ navigation, route }) => {
             remainingSnoozes={3}
             snoozeDate={selectedDate}
           />
-
-          {/* FIX 3: Completion Animation */}
           <CompletionAnimation
             visible={showAnimation}
             onComplete={() => setShowAnimation(false)}
@@ -984,101 +943,381 @@ const HabitDetailScreen = ({ navigation, route }) => {
     );
 };
 
-// --- STYLES (Đã hợp nhất V1 & V2) ---
-// ... (Phần Styles không thay đổi, giữ nguyên từ phản hồi trước) ...
+// --- BEAUTIFUL MODERN STYLES ---
+
 const styles = StyleSheet.create({
-    container: { flex: 1 },
+    container: {
+        flex: 1,
+    },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderBottomWidth: StyleSheet.hairlineWidth,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
     },
-    backButton: { padding: 8 },
-    title: { fontSize: 18, fontWeight: '600' },
-    content: { flex: 1 },
+    backButton: {
+        padding: 4,
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: '700',
+    },
+    content: {
+        flex: 1,
+        paddingHorizontal: 20,
+    },
 
+    // Habit Info - Hero Card
     habitInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 8,
-        borderRadius: 12,
-        marginTop: 12,
+        padding: 20,
+        borderRadius: 20,
+        marginTop: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
     },
-    habitIcon: { width: 45, height: 45, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-    habitText: { flex: 1 },
-    habitName: { fontSize: 18, fontWeight: '800', marginBottom: 4 },
-    habitDescription: { fontSize: 13 },
-
-    commitGridScroll: { marginTop: 8, transform: [{ scaleX: -1 }] },
-    monthColumn: { marginRight: 7, alignItems: 'center', transform: [{ scaleX: -1 }] },
-    monthLabel: { fontSize: 10, fontWeight: '500', marginBottom: 6, textAlign: 'center', width: 32 },
-    monthGrid: { flexDirection: 'column' },
-    dayRow: { flexDirection: 'row', marginBottom: 2 },
-    commitDay: { width: 7, height: 7, borderRadius: 2, marginRight: 2 },
-    commitDayOutside: { backgroundColor: 'transparent' },
-
-    streakBar: {
+    habitIcon: {
+        width: 60,
         height: 60,
-        width: '100%',
-        backgroundColor: '#2a2a2a',
-        borderRadius: 10,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 4,
+    },
+    habitText: {
+        flex: 1,
+    },
+    habitName: {
+        fontSize: 22,
+        fontWeight: '800',
+        marginBottom: 4,
+    },
+    habitDescription: {
+        fontSize: 14,
+        lineHeight: 20,
+    },
+
+    // Streak Bar - Glass Morphism Style
+    streakBar: {
+        borderRadius: 20,
+        marginTop: 16,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    streakContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+    },
+    streakItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+        justifyContent: 'center',
+    },
+    fireIconContainer: {
+        position: 'relative',
+    },
+    fireworksContainer: {
+        position: 'absolute',
+        top: -10,
+        left: -15,
+        right: -15,
+        bottom: -10,
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        pointerEvents: 'none',
+    },
+    fireworks: {
+        fontSize: 16,
+        position: 'absolute',
+    },
+    streakTextContainer: {
+        alignItems: 'center',
+    },
+    streakNumber: {
+        fontSize: 28,
+        fontWeight: '800',
+        marginBottom: 2,
+    },
+    streakLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    divider: {
+        width: 1,
+        height: 40,
+        marginHorizontal: 8,
+    },
+    streakHint: {
+        fontSize: 12,
+        fontWeight: '500',
         marginTop: 12,
-        paddingHorizontal: 16,
+        textAlign: 'center',
+    },
+
+    // Timer Section - Modern Card
+    timerSection: {
+        borderRadius: 20,
+        marginTop: 16,
+        padding: 24,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
     },
-    streakLeft: { flexDirection: 'column', alignItems: 'flex-start', flex: 1 },
-    targetBlock: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-    fireIconContainer: { position: 'relative', marginRight: 8 },
-    fireworksContainer: { position: 'absolute', top: -10, left: -15, right: -15, bottom: -10, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', pointerEvents: 'none' },
-    fireworks: { fontSize: 12, position: 'absolute' },
-    flameCount: { color: '#FF6B6B', fontSize: 18, fontWeight: '700' },
-    streakHint: { color: '#999', fontSize: 11, fontStyle: 'italic', marginTop: 2 },
-    streakRight: { flexDirection: 'row', alignItems: 'center' },
-    iconButton: { padding: 8, marginLeft: 8 },
-
-    monthNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
-    navIcon: { padding: 6 },
-    monthTitle: { fontSize: 14, fontWeight: '600' },
-    weekDaysHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-    weekDayText: { fontSize: 12, fontWeight: '500', width: 38, textAlign: 'center' },
-    weekRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-    dayButton: {
-        width: 38,
-        height: 38,
-        borderRadius: 6,
+    timerWrapper: {
+        alignItems: 'center',
+    },
+    timerContainer: {
+        alignItems: 'center',
+    },
+    circularTimer: {
+        position: 'relative',
         justifyContent: 'center',
         alignItems: 'center',
-        position: 'relative',
     },
-    todayButton: { borderWidth: 2 },
-    futureDay: { opacity: 0.3 },
-    dayText: { fontSize: 14, fontWeight: '400' },
-    todayText: { fontWeight: 'bold' },
-    futureDayText: { color: '#444' },
-    smallCountText: { fontSize: 7, color: '#ddd', textAlign: 'center' },
-    smallCountTextEmpty: { fontSize: 9, color: 'transparent' },
-
-    section: {
-        marginVertical: 8,
-        padding: 16,
+    timerTextContainer: {
+        position: 'absolute',
+    },
+    timerText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '700',
+        fontFamily: 'monospace',
+    },
+    progressContainer: {
+        marginTop: 12,
+    },
+    progressText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    progressTextCompleted: {
+        color: '#4CAF50',
+    },
+    timerButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    startButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
         borderRadius: 12,
+        minWidth: 120,
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    checkInButton: {
+        backgroundColor: '#4CAF50',
+    },
+    disabledButton: {
+        opacity: 0.6,
+    },
+    startButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '700',
+        marginLeft: 8,
+    },
+    startButtonTextDisabled: {
+        color: '#ccc',
+    },
+    completeEarlyButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    completeEarlyButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '700',
+        marginLeft: 8,
+    },
+
+    // Notification Section
+    notificationSection: {
+        borderRadius: 16,
+        marginTop: 16,
+        padding: 16,
+        flexDirection: 'row',
+        gap: 12,
+    },
+    notificationItem: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    notificationIconBg: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    notificationTextContainer: {
+        flex: 1,
+    },
+    notificationLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 2,
+    },
+    notificationValue: {
+        fontSize: 15,
+        fontWeight: '700',
+    },
+
+    // History Grid
+    commitGridScroll: {
+        marginTop: 12,
+        transform: [{ scaleX: -1 }],
+    },
+    monthColumn: {
+        marginRight: 8,
+        alignItems: 'center',
+        transform: [{ scaleX: -1 }],
+    },
+    monthLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        marginBottom: 8,
+        textAlign: 'center',
+        width: 32,
+    },
+    monthGrid: {
+        flexDirection: 'column',
+    },
+    dayRow: {
+        flexDirection: 'row',
+        marginBottom: 3,
+    },
+    commitDay: {
+        width: 8,
+        height: 8,
+        borderRadius: 2,
+        marginRight: 3,
+    },
+    commitDayOutside: {
+        backgroundColor: 'transparent',
+    },
+
+    // Month Calendar
+    section: {
+        marginTop: 16,
+        padding: 20,
+        borderRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
     },
     sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        marginBottom: 16,
+    },
+    monthNavRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    navIcon: {
+        padding: 8,
+    },
+    monthTitle: {
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
+    },
+    weekDaysHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         marginBottom: 12,
     },
+    weekDayText: {
+        fontSize: 12,
+        fontWeight: '600',
+        width: 40,
+        textAlign: 'center',
+    },
+    weekRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    dayButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    todayText: {
+        fontWeight: '800',
+    },
+    futureDay: {
+        opacity: 0.3,
+    },
+    dayText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    futureDayText: {
+        color: '#666',
+    },
+    smallCountText: {
+        fontSize: 8,
+        position: 'absolute',
+        bottom: 2,
+    },
+
+    // Sub-habits
     subHabitItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
-        borderRadius: 8,
-        borderWidth: 1,
+        padding: 16,
+        borderRadius: 12,
         marginBottom: 8,
         gap: 12,
     },
@@ -1090,97 +1329,56 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    subHabitName: { flex: 1, fontSize: 15 },
+    subHabitName: {
+        flex: 1,
+        fontSize: 15,
+        fontWeight: '500',
+    },
 
+    // Notes Section
+    notesWrapper: {
+        marginTop: 16,
+    },
     noteButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginVertical: 8,
-        padding: 16,
-        borderRadius: 12,
-        borderWidth: 1,
-        gap: 12,
+        padding: 20,
+        borderRadius: 20,
+        gap: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
     },
-    noteTitle: { fontSize: 16, fontWeight: '500' },
-    noteSubtitle: { fontSize: 13, marginTop: 2 },
+    noteIconBg: {
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    noteTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        marginBottom: 4,
+    },
+    noteSubtitle: {
+        fontSize: 14,
+    },
     allNotesButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 8,
-        padding: 12,
-        borderRadius: 8,
-        borderWidth: 1,
-        gap: 8,
+        marginTop: 12,
+        padding: 16,
+        borderRadius: 16,
+        gap: 12,
     },
     allNotesText: {
         flex: 1,
-        fontSize: 14,
-        fontWeight: '500'
+        fontSize: 15,
+        fontWeight: '600',
     },
-
-    timerSection: {
-        width: '100%',
-        backgroundColor: '#2a2a2a',
-        borderRadius: 10,
-        marginTop: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    timerSectionDisabled: { opacity: 0.6 },
-    timerWrapper: { flexDirection: 'column', alignItems: 'center' },
-    circularTimerWrapper: { opacity: 1 },
-    circularTimerDisabled: { opacity: 0.5 },
-    progressContainer: { marginTop: 8 },
-    progressText: { color: '#999', fontSize: 12, fontWeight: '500', textAlign: 'center' },
-    progressTextCompleted: { color: '#4CAF50', fontWeight: '600' },
-    timerContainer: { flexDirection: 'row', alignItems: 'center' },
-    circularTimer: { position: 'relative', justifyContent: 'center', alignItems: 'center' },
-    timerTextContainer: { marginLeft: 12 },
-    timerText: { color: '#fff', fontSize: 16, fontWeight: '600', fontFamily: 'monospace', textAlign: 'center' },
-    timerButtons: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-    startButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
-        minWidth: 100,
-        justifyContent: 'center',
-    },
-    checkInButton: { backgroundColor: '#4CAF50' },
-    disabledButton: { backgroundColor: '#666', opacity: 0.8 },
-    startButtonText: { color: '#fff', fontSize: 13, fontWeight: '600', marginLeft: 4 },
-    startButtonTextDisabled: { color: '#ccc' },
-    completeEarlyButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#4CAF50',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
-        minWidth: 80,
-        justifyContent: 'center',
-    },
-    completeEarlyButtonText: { color: '#fff', fontSize: 13, fontWeight: '600', marginLeft: 4 },
-
-    notificationSection: {
-        width: '100%',
-        borderRadius: 10,
-        marginTop: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 16,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    notificationLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 },
-    notificationRight: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-    notificationTextContainer: { marginLeft: 8, flex: 1 },
-    notificationLabel: { fontSize: 11, fontWeight: '500', marginBottom: 2 },
-    notificationValue: { fontSize: 13, fontWeight: '600' },
 });
-
 
 export default HabitDetailScreen;
