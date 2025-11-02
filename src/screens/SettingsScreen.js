@@ -95,7 +95,7 @@ const SettingsScreen = ({ navigation }) => {
           >
               <Icon
                 name={icon}
-                size={28}
+                size={20}
                 color={isSelected ? theme.primary : theme.textSecondary}
               />
               <Text style={[
@@ -106,7 +106,7 @@ const SettingsScreen = ({ navigation }) => {
               </Text>
               {isSelected && (
                 <View style={[styles.selectedBadge, { backgroundColor: theme.primary }]}>
-                    <Icon name="check" size={12} color="#fff" />
+                    <Icon name="check" size={8} color="#fff" />
                 </View>
               )}
           </TouchableOpacity>
@@ -158,41 +158,6 @@ const SettingsScreen = ({ navigation }) => {
                 onPress={() => setShowComingSoon(true)}
               />
 
-              <SettingItem
-                icon="lock-reset"
-                title="Change Password"
-                iconBg="#9C27B0"
-                onPress={() => setShowComingSoon(true)}
-              />
-
-              {/* Notifications Section */}
-              <SectionHeader title="NOTIFICATIONS" />
-
-              <SettingSwitch
-                icon="bell"
-                title="Push Notifications"
-                subtitle="Get reminders for your habits"
-                iconBg="#4CAF50"
-                value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
-              />
-
-              <SettingItem
-                icon="bell-ring"
-                title="Notification Settings"
-                subtitle="Customize your notification preferences"
-                iconBg="#00BCD4"
-                onPress={() => setShowComingSoon(true)}
-              />
-
-              <SettingItem
-                icon="clock-outline"
-                title="Reminder Time"
-                subtitle="Set default reminder time"
-                iconBg="#FF9800"
-                onPress={() => setShowComingSoon(true)}
-              />
-
               {/* Appearance Section */}
               <SectionHeader title="DARK MODE" />
 
@@ -214,13 +179,26 @@ const SettingsScreen = ({ navigation }) => {
                   />
               </View>
 
-              <SettingItem
-                icon="palette"
-                title="Accent Color"
-                subtitle="Customize app color theme"
-                iconBg="#673AB7"
-                onPress={() => setShowComingSoon(true)}
+              {/* Notifications Section */}
+              <SectionHeader title="NOTIFICATIONS" />
+
+              <SettingSwitch
+                icon="bell"
+                title="Push Notifications"
+                subtitle="Get reminders for your habits"
+                iconBg="#4CAF50"
+                value={notificationsEnabled}
+                onValueChange={setNotificationsEnabled}
               />
+
+
+              {/*<SettingItem*/}
+              {/*  icon="palette"*/}
+              {/*  title="Accent Color"*/}
+              {/*  subtitle="Customize app color theme"*/}
+              {/*  iconBg="#673AB7"*/}
+              {/*  onPress={() => setShowComingSoon(true)}*/}
+              {/*/>*/}
 
               {/* Help & Support Section */}
               <SectionHeader title="HELP & SUPPORT" />
@@ -234,51 +212,10 @@ const SettingsScreen = ({ navigation }) => {
               />
 
               <SettingItem
-                icon="book-open-variant"
-                title="Tutorial"
-                subtitle="Learn how to use the app"
-                iconBg="#3F51B5"
-                onPress={() => setShowComingSoon(true)}
-              />
-
-              <SettingItem
-                icon="message-text"
-                title="Send Feedback"
-                subtitle="Help us improve the app"
-                iconBg="#FF5722"
-                onPress={() => setShowComingSoon(true)}
-              />
-
-              <SettingItem
                 icon="star"
                 title="Rate App"
                 subtitle="Share your experience"
                 iconBg="#FFC107"
-                onPress={() => setShowComingSoon(true)}
-              />
-
-              {/* About Section */}
-              <SectionHeader title="ABOUT" />
-
-              <SettingItem
-                icon="information"
-                title="About HabitHub"
-                subtitle="App version 1.0.0"
-                iconBg="#607D8B"
-                onPress={() => setShowComingSoon(true)}
-              />
-
-              <SettingItem
-                icon="file-document"
-                title="Terms of Service"
-                iconBg="#795548"
-                onPress={() => setShowComingSoon(true)}
-              />
-
-              <SettingItem
-                icon="shield-check"
-                title="Privacy Policy"
-                iconBg="#009688"
                 onPress={() => setShowComingSoon(true)}
               />
 
@@ -292,29 +229,8 @@ const SettingsScreen = ({ navigation }) => {
                 onPress={() => setShowComingSoon(true)}
               />
 
-              <SettingItem
-                icon="delete-forever"
-                title="Delete Account"
-                subtitle="Permanently delete your account"
-                iconBg="#D32F2F"
-                onPress={() => setShowComingSoon(true)}
-              />
-
-              {/* Version Info */}
-              <View style={styles.versionContainer}>
-                  <Text style={[styles.versionText, { color: theme.textMuted }]}>
-                      HabitHub
-                  </Text>
-                  <Text style={[styles.versionNumber, { color: theme.textTertiary }]}>
-                      Version 1.0.0 (Build 1)
-                  </Text>
-                  <Text style={[styles.copyrightText, { color: theme.textTertiary }]}>
-                      Made with ❤️ for better habits
-                  </Text>
-              </View>
-
               {/* Bottom Spacing */}
-              <View style={{ height: 100 }} />
+              <View style={{ height: 20 }} />
           </ScrollView>
 
           <ComingSoonDialog
