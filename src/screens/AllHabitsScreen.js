@@ -95,7 +95,7 @@ const HabitItem = ({ habit, theme, navigation, onArchive }) => {
         </TouchableOpacity>
 
         <View style={[styles.iconContainer, { backgroundColor: habit.color }]}>
-          <Icon name={habit.icon} size={24} color="#fff" />
+          <Icon name={habit.icon} size={18} color="#fff" />
         </View>
 
         <View style={styles.habitContent}>
@@ -169,18 +169,18 @@ const AllHabitsScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="arrow-left" size={24} color={theme.text} />
-        </TouchableOpacity>
+        {/*<TouchableOpacity*/}
+        {/*  style={styles.backButton}*/}
+        {/*  onPress={() => navigation.goBack()}*/}
+        {/*>*/}
+        {/*  <Icon name="arrow-left" size={24} color={theme.text} />*/}
+        {/*</TouchableOpacity>*/}
         <Text style={[styles.title, { color: theme.text }]}>All Habits</Text>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('CreateHabit')}
-        >
-          <Icon name="plus" size={28} color={theme.primary} />
-        </TouchableOpacity>
+        {/*<TouchableOpacity*/}
+        {/*  onPress={() => navigation.navigate('CreateHabit')}*/}
+        {/*>*/}
+        {/*  <Icon name="plus" size={28} color={theme.primary} />*/}
+        {/*</TouchableOpacity>*/}
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,

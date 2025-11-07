@@ -75,7 +75,7 @@ export const HabitProvider = ({ children }) => {
       ? 'rgba(17, 24, 39, 0.3)' // gray-900/30
       : '#F9FAFB',
     card: isDarkMode
-      ? 'rgba(31, 41, 55, 0.5)' // gray-800/50
+      ? 'rgba(31, 41, 55, 0.9)' // gray-800/50
       : '#FFFFFF',
 
     // Text

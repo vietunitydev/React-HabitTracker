@@ -24,7 +24,7 @@ const formatDateLocal = (date) => {
 };
 
 // Progress Circle Component
-const ProgressCircle = ({ progress, size = 100, strokeWidth = 8 }) => {
+const ProgressCircle = ({ progress, theme, size = 100, strokeWidth = 8}) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (progress / 100) * circumference;
@@ -40,6 +40,7 @@ const ProgressCircle = ({ progress, size = 100, strokeWidth = 8 }) => {
                 stroke="rgba(255, 255, 255, 0.3)"
                 strokeWidth={strokeWidth}
                 fill="none"
+                // style={[{backgroundColor: theme.background}]}
               />
               {/* Progress Circle */}
               <Circle
@@ -57,7 +58,7 @@ const ProgressCircle = ({ progress, size = 100, strokeWidth = 8 }) => {
               />
           </Svg>
           <View style={styles.progressTextContainer}>
-              <Text style={styles.progressText}>{Math.round(progress)}%</Text>
+              <Text style={[styles.progressText, {color: theme.text}]}>{Math.round(progress)}%</Text>
           </View>
       </View>
     );
@@ -152,7 +153,7 @@ const TodayHabitItem = ({ habit, theme, onPress }) => {
       >
           <View style={styles.habitCardContent}>
               <View style={[styles.habitIconContainer, { backgroundColor: habit.color }]}>
-                  <Icon name={habit.icon} size={32} color="#fff" />
+                  <Icon name={habit.icon} size={25} color="#fff" />
               </View>
 
               <View style={styles.habitInfo}>
@@ -236,24 +237,24 @@ const HomeScreen = ({ navigation }) => {
               <WeekCalendar theme={theme} />
 
               {/* Progress Card */}
-              <View style={styles.progressCard}>
+              <View style={[styles.progressCard, {backgroundColor: theme.card}]}>
                   <View style={styles.progressCardContent}>
-                      <ProgressCircle progress={completionPercentage} />
+                      <ProgressCircle progress={completionPercentage} theme={theme} />
                       <View style={styles.progressInfo}>
-                          <Text style={styles.progressTitle}>
+                          <Text style={[styles.progressTitle, { color: theme.text }]}>
                               {completedCount} of {todayHabits.length} habits
                           </Text>
-                          <Text style={styles.progressSubtitle}>
+                          <Text style={[styles.progressSubtitle, { color: theme.text }]}>
                               completed today!
                           </Text>
-                          <View style={styles.celebrationEmoji}>
-                              <Text style={styles.emoji}>👏 🎯 📊</Text>
-                          </View>
+                          {/*<View style={styles.celebrationEmoji}>*/}
+                          {/*    <Text style={styles.emoji}>👏 🎯 📊</Text>*/}
+                          {/*</View>*/}
                       </View>
                   </View>
-                  <View style={styles.illustration}>
-                      <Icon name="notebook-check" size={80} color="rgba(255,255,255,0.3)" />
-                  </View>
+                  {/*<View style={styles.illustration}>*/}
+                  {/*    <Icon name="notebook-check" size={80} color="rgba(255,255,255,0.3)" />*/}
+                  {/*</View>*/}
               </View>
 
               {/* Today Habits Section */}
@@ -326,14 +327,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 10,
         paddingHorizontal: 8,
-        borderRadius: 12,
-        minWidth: 45,
+        borderRadius: 20,
+        minWidth: 40,
     },
     todayItem: {
         backgroundColor: '#42A5F5',
     },
     dayName: {
-        fontSize: 12,
+        fontSize: 10,
         fontWeight: '600',
         marginBottom: 4,
     },
@@ -343,13 +344,13 @@ const styles = StyleSheet.create({
     },
     progressCard: {
         marginHorizontal: 20,
-        marginBottom: 30,
+        marginBottom: 20,
         padding: 24,
         borderRadius: 20,
         backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         overflow: 'hidden',
         position: 'relative',
-        minHeight: 180,
+        minHeight: 150,
         // Gradient background
         // backgroundColor: '#667eea',
     },
@@ -437,7 +438,7 @@ const styles = StyleSheet.create({
     habitIconContainer: {
         width: 56,
         height: 56,
-        borderRadius: 12,
+        borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,

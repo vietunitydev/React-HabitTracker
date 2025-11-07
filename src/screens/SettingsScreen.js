@@ -150,13 +150,13 @@ const SettingsScreen = ({ navigation }) => {
                   </TouchableOpacity>
               </View>
 
-              <SettingItem
-                icon="shield-account"
-                title="Privacy & Security"
-                subtitle="Manage your data and privacy"
-                iconBg="#E91E63"
-                onPress={() => setShowComingSoon(true)}
-              />
+              {/*<SettingItem*/}
+              {/*  icon="shield-account"*/}
+              {/*  title="Privacy & Security"*/}
+              {/*  subtitle="Manage your data and privacy"*/}
+              {/*  iconBg="#E91E63"*/}
+              {/*  onPress={() => setShowComingSoon(true)}*/}
+              {/*/>*/}
 
               {/* Appearance Section */}
               <SectionHeader title="DARK MODE" />

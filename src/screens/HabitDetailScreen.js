@@ -16,7 +16,6 @@ import { HabitContext } from '../contexts/HabitContext';
 import ComingSoonDialog from '../components/ComingSoonDialog';
 import CompletionAnimation from '../components/CompletionAnimation';
 import SnoozeDialog from '../components/SnoozeDialog';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
