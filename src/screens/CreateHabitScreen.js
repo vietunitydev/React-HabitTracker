@@ -275,19 +275,19 @@ const CreateHabitScreen = ({ navigation, route }) => {
                     onChangeText={setName}
                   />
 
-                  <TextInput
-                    style={[styles.input, styles.textArea, {
-                        backgroundColor: theme.backgroundSecondary,
-                        color: theme.text,
-                        borderColor: theme.border,
-                    }]}
-                    placeholder="Mô tả (tùy chọn)"
-                    placeholderTextColor={theme.textMuted}
-                    value={description}
-                    onChangeText={setDescription}
-                    multiline
-                    numberOfLines={3}
-                  />
+                  {/*<TextInput*/}
+                  {/*  style={[styles.input, styles.textArea, {*/}
+                  {/*      backgroundColor: theme.backgroundSecondary,*/}
+                  {/*      color: theme.text,*/}
+                  {/*      borderColor: theme.border,*/}
+                  {/*  }]}*/}
+                  {/*  placeholder="Mô tả (tùy chọn)"*/}
+                  {/*  placeholderTextColor={theme.textMuted}*/}
+                  {/*  value={description}*/}
+                  {/*  onChangeText={setDescription}*/}
+                  {/*  multiline*/}
+                  {/*  numberOfLines={3}*/}
+                  {/*/>*/}
 
                   {/* Icon & Color */}
                   <View style={styles.row}>
@@ -295,7 +295,7 @@ const CreateHabitScreen = ({ navigation, route }) => {
                         style={[styles.iconButton, { backgroundColor: selectedColor }]}
                         onPress={() => navigation.navigate('ChooseIconImage', { currentIcon: selectedIcon })}
                       >
-                          <Icon name={selectedIcon} size={36} color="#fff" />
+                          <Icon name={selectedIcon} size={30} color="#fff" />
                       </TouchableOpacity>
 
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colorPicker}>
@@ -797,7 +797,7 @@ const styles = StyleSheet.create({
     iconButton: {
         width: 72,
         height: 72,
-        borderRadius: 16,
+        borderRadius: 36,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
